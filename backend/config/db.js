@@ -288,6 +288,102 @@ async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS room_categories (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        slug VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT NULL,
+        total_rooms INT NOT NULL DEFAULT 4,
+        image_url VARCHAR(500) NULL,
+        sort_order INT DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS payment_accounts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        method ENUM('bank_transfer', 'jazzcash', 'easypaisa', 'other') NOT NULL,
+        bank_name VARCHAR(255) NOT NULL,
+        account_title VARCHAR(255) NOT NULL,
+        account_number VARCHAR(100) NOT NULL,
+        iban VARCHAR(100) NULL,
+        instructions TEXT NULL,
+        is_active TINYINT(1) DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS service_bookings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        booking_number VARCHAR(50) NOT NULL UNIQUE,
+        booking_type ENUM('dining', 'experience') NOT NULL,
+        service_id INT NOT NULL,
+        service_title VARCHAR(255) NOT NULL,
+        guest_name VARCHAR(255) NOT NULL,
+        guest_email VARCHAR(255) NOT NULL,
+        guest_phone VARCHAR(50) NOT NULL,
+        booking_date DATE NOT NULL,
+        booking_time VARCHAR(50) NOT NULL,
+        guests_count INT NOT NULL DEFAULT 2,
+        unit_price DECIMAL(10,2) NOT NULL,
+        total_price DECIMAL(10,2) NOT NULL,
+        special_requests TEXT NULL,
+        payment_method ENUM('pay_at_hotel', 'bank_transfer', 'jazzcash', 'easypaisa') NOT NULL DEFAULT 'pay_at_hotel',
+        payment_status ENUM('pending', 'verified', 'paid', 'refunded') DEFAULT 'pending',
+        payment_transaction_id VARCHAR(100) NULL,
+        payment_slip_path VARCHAR(500) NULL,
+        booking_status ENUM('pending', 'confirmed', 'completed', 'cancelled') DEFAULT 'pending',
+        admin_notes TEXT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_type (booking_type),
+        INDEX idx_date (booking_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS dining_items (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        deal_type VARCHAR(100) NOT NULL DEFAULT 'Deal & Package',
+        category VARCHAR(100) NOT NULL DEFAULT 'Dining',
+        description TEXT,
+        price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        pricing_unit VARCHAR(50) NOT NULL DEFAULT 'per_couple',
+        menu_inclusions TEXT,
+        time_slots VARCHAR(255) NOT NULL DEFAULT 'Sunset Sitting (18:30 - 20:30), Night Starlight (20:45 - 23:00)',
+        image_url VARCHAR(500),
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        sort_order INT NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS experiences (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL DEFAULT 'Desert Safari',
+        duration VARCHAR(100) NOT NULL DEFAULT '2 Hours',
+        description TEXT,
+        price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        pricing_unit VARCHAR(50) NOT NULL DEFAULT 'per_vehicle',
+        inclusions TEXT,
+        time_slots VARCHAR(255) NOT NULL DEFAULT 'Sunrise Thrill (06:00 - 08:00), Sunset Dunes (17:00 - 18:30)',
+        image_url VARCHAR(500),
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        sort_order INT NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // 4. Check if demo seeding is needed
     const users = await query('SELECT COUNT(*) as count FROM users');
     if (users[0].count === 0) {
