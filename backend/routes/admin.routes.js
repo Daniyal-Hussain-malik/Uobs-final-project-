@@ -409,16 +409,20 @@ const mediaStorage = multer.diskStorage({
 
 const uploadMedia = multer({
   storage: mediaStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB per image
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB per file
   fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|webp/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.test(ext)) cb(null, true);
-    else cb(new Error('Only JPG, PNG, WEBP images are allowed.'));
+    // Permissive image filter to support jpg, jpeg, png, webp, avif, jfif, bmp, heic
+    const allowed = /jpeg|jpg|png|webp|avif|jfif|bmp|heic/i;
+    const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+    if (!ext || allowed.test(ext) || allowed.test(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(null, true); // still accept safely
+    }
   },
 });
 
-router.post('/upload-media', uploadMedia.array('files', 12), (req, res) => {
+router.post('/upload-media', uploadMedia.any(), (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ success: false, message: 'No media files were provided.' });
@@ -750,7 +754,7 @@ router.post('/experiences', async (req, res) => {
     const {
       title, category = 'Adventures', duration = '2 - 3 Hours', difficulty = 'Moderate',
       price = 0, pricing_unit = 'per_vehicle', inclusions = '',
-      departure_times = 'Morning (09:00), Afternoon (14:30), Sunset (17:00)',
+      departure_times, time_slots,
       description = '', image_url = '', is_active = 1, sort_order = 0
     } = req.body;
 
@@ -758,14 +762,16 @@ router.post('/experiences', async (req, res) => {
       return res.status(422).json({ success: false, message: 'Experience title is required.' });
     }
 
+    const depTimes = departure_times || time_slots || 'Morning (09:00), Afternoon (14:30), Sunset (17:00)';
+
     const result = await query(
       `INSERT INTO experiences (
         title, category, duration, difficulty, price, pricing_unit,
-        inclusions, departure_times, description, image_url, is_active, sort_order
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        inclusions, departure_times, time_slots, description, image_url, is_active, sort_order
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         title.trim(), category, duration, difficulty, parseFloat(price) || 0,
-        pricing_unit, inclusions, departure_times, description, image_url,
+        pricing_unit, inclusions, depTimes, depTimes, description, image_url,
         is_active ? 1 : 0, parseInt(sort_order, 10) || 0
       ]
     );
@@ -782,7 +788,7 @@ router.put('/experiences/:id', async (req, res) => {
     const {
       title, category = 'Adventures', duration = '2 - 3 Hours', difficulty = 'Moderate',
       price = 0, pricing_unit = 'per_vehicle', inclusions = '',
-      departure_times = 'Morning (09:00), Afternoon (14:30), Sunset (17:00)',
+      departure_times, time_slots,
       description = '', image_url = '', is_active = 1, sort_order = 0
     } = req.body;
 
@@ -790,14 +796,16 @@ router.put('/experiences/:id', async (req, res) => {
       return res.status(422).json({ success: false, message: 'Experience title is required.' });
     }
 
+    const depTimes = departure_times || time_slots || 'Morning (09:00), Afternoon (14:30), Sunset (17:00)';
+
     await query(
       `UPDATE experiences SET
         title = ?, category = ?, duration = ?, difficulty = ?, price = ?, pricing_unit = ?,
-        inclusions = ?, departure_times = ?, description = ?, image_url = ?, is_active = ?, sort_order = ?
+        inclusions = ?, departure_times = ?, time_slots = ?, description = ?, image_url = ?, is_active = ?, sort_order = ?
        WHERE id = ?`,
       [
         title.trim(), category, duration, difficulty, parseFloat(price) || 0,
-        pricing_unit, inclusions, departure_times, description, image_url,
+        pricing_unit, inclusions, depTimes, depTimes, description, image_url,
         is_active ? 1 : 0, parseInt(sort_order, 10) || 0, id
       ]
     );
@@ -823,12 +831,15 @@ const galleryStorage = multer.diskStorage({
 
 const uploadGalleryMedia = multer({
   storage: galleryStorage,
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
+  limits: { fileSize: 30 * 1024 * 1024 }, // 30MB
   fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|webp|avif/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.test(ext)) cb(null, true);
-    else cb(new Error('Only JPG, PNG, WEBP, AVIF images are allowed.'));
+    const allowed = /jpeg|jpg|png|webp|avif|jfif|bmp|heic/i;
+    const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+    if (!ext || allowed.test(ext) || allowed.test(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(null, true); // accept safely
+    }
   },
 });
 

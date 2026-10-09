@@ -16,6 +16,10 @@ frontend/.env
 # Uploads (User submitted payment slips)
 backend/uploads/slips/*
 !backend/uploads/slips/.gitkeep
+frontend/public/uploads/
+backend/public/uploads/
+frontend/dist/uploads/
+
 
 # Large local html archives
 frontend/oasis-resort-v2.html

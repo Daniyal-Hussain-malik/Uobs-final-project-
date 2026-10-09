@@ -229,25 +229,25 @@ export default function Home() {
           <div className="lg:col-span-6 grid grid-cols-2 gap-4">
             <div className="space-y-4">
               <img
-                src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80"
-                alt="Oasis Resort Architecture"
+                src="/uploads/assets/f2740c11-e1a4-4676-aeaa-da85cfe2100d.jpg"
+                alt="Oasis Resort Architecture & Katpana View"
                 className="rounded-2xl object-cover h-64 w-full border border-white/10 shadow-xl"
               />
               <img
-                src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80"
-                alt="Luxury Suite Interior"
+                src="/uploads/assets/d6eccb38-1e02-4ca6-b7d4-3dbcf7473cbe.jpg"
+                alt="Oasis Resort Luxury Suites & Grounds"
                 className="rounded-2xl object-cover h-48 w-full border border-white/10 shadow-xl"
               />
             </div>
             <div className="space-y-4 pt-8">
               <img
-                src="https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80"
-                alt="Katpana Cold Desert Dune View"
+                src="/uploads/assets/5856889e-02fa-4c11-8962-37ac5d0f6f33.jpg"
+                alt="Katpana Cold Desert Dune Sunset View"
                 className="rounded-2xl object-cover h-48 w-full border border-white/10 shadow-xl"
               />
               <img
-                src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80"
-                alt="Warm Fireplace Lounge"
+                src="/uploads/assets/2a0db57c-ae52-4b43-b4f4-56e263902c23.jpg"
+                alt="Oasis Resort Landscape & Mountain Panorama"
                 className="rounded-2xl object-cover h-64 w-full border border-white/10 shadow-xl"
               />
             </div>
