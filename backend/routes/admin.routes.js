@@ -389,8 +389,15 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const roomUploadDir = path.join(__dirname, '../uploads/rooms');
+const baseUploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+const roomUploadDir = path.join(baseUploadDir, 'rooms');
 if (!fs.existsSync(roomUploadDir)) fs.mkdirSync(roomUploadDir, { recursive: true });
+
+function getLocalUploadedFilePath(url) {
+  if (!url) return null;
+  const rel = url.replace(/^\/?uploads\//, '');
+  return path.join(baseUploadDir, rel);
+}
 
 const mediaStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, roomUploadDir),
@@ -803,7 +810,7 @@ router.put('/experiences/:id', async (req, res) => {
 
 // 12. Media Gallery & Gallery Categories Management
 
-const galleryUploadDir = path.join(__dirname, '../uploads/gallery');
+const galleryUploadDir = path.join(baseUploadDir, 'gallery');
 if (!fs.existsSync(galleryUploadDir)) fs.mkdirSync(galleryUploadDir, { recursive: true });
 
 const galleryStorage = multer.diskStorage({
@@ -990,8 +997,8 @@ router.put('/gallery/:id', uploadGalleryMedia.single('image'), async (req, res) 
       const oldUrl = current.image_url;
       image_url = `/uploads/gallery/${req.file.filename}`;
       if (oldUrl && oldUrl.startsWith('/uploads/gallery/')) {
-        const oldPath = path.join(__dirname, '..', oldUrl);
-        if (fs.existsSync(oldPath)) {
+        const oldPath = getLocalUploadedFilePath(oldUrl);
+        if (oldPath && fs.existsSync(oldPath)) {
           try { fs.unlinkSync(oldPath); } catch (e) { /* ignore */ }
         }
       }
@@ -1045,8 +1052,8 @@ router.post('/gallery/:id/replace-image', uploadGalleryMedia.single('image'), as
       newUrl = `/uploads/gallery/${req.file.filename}`;
       const oldUrl = current.image_url;
       if (oldUrl && oldUrl.startsWith('/uploads/gallery/')) {
-        const oldPath = path.join(__dirname, '..', oldUrl);
-        if (fs.existsSync(oldPath)) {
+        const oldPath = getLocalUploadedFilePath(oldUrl);
+        if (oldPath && fs.existsSync(oldPath)) {
           try { fs.unlinkSync(oldPath); } catch (e) { /* ignore */ }
         }
       }
@@ -1075,8 +1082,8 @@ router.delete('/gallery/:id', async (req, res) => {
 
     // Delete local file if present
     if (current.image_url && current.image_url.startsWith('/uploads/gallery/')) {
-      const filePath = path.join(__dirname, '..', current.image_url);
-      if (fs.existsSync(filePath)) {
+      const filePath = getLocalUploadedFilePath(current.image_url);
+      if (filePath && fs.existsSync(filePath)) {
         try { fs.unlinkSync(filePath); } catch (e) { /* ignore */ }
       }
     }

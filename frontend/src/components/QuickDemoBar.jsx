@@ -5,6 +5,7 @@ import {
   MapPin, Phone, Tag, User, ShieldCheck, Key, LogOut,
   ExternalLink, Copy, Check, ChevronDown, ChevronUp, Sparkles, Loader2
 } from 'lucide-react';
+import { SITE_CONFIG } from '../config/siteConfig';
 
 export default function QuickDemoBar() {
   const { user, quickLogin, logout } = useAuth();
@@ -52,22 +53,22 @@ export default function QuickDemoBar() {
           <span className="flex items-center gap-1.5 text-[#EAEBE8] font-medium">
             <MapPin className="w-3.5 h-3.5 text-[#787C68] shrink-0" />
             <span>Katpana Cold Desert, Skardu</span>
-            <span className="hidden sm:inline text-[#A8AD94] font-mono">(2,228m Alt)</span>
+            <span className="hidden sm:inline text-[#A8AD94] font-mono">({SITE_CONFIG.altitude})</span>
           </span>
           
           <a
-            href="tel:+923081472888"
+            href={`tel:${SITE_CONFIG.phoneRaw}`}
             className="hidden md:inline-flex items-center gap-1.5 text-[#A8AD94] hover:text-[#EAEBE8] transition"
           >
             <Phone className="w-3.5 h-3.5 text-[#787C68] shrink-0" />
-            0308-1472888 / 0344-5537788
+            {SITE_CONFIG.phonePrimary} / {SITE_CONFIG.phoneSecondary}
           </a>
 
           {/* Connected Official Social Handles */}
           <div className="hidden lg:flex items-center space-x-2 pl-2 border-l border-white/10">
             {/* Facebook */}
             <a
-              href="https://www.facebook.com/OasissResorts/"
+              href={SITE_CONFIG.facebookUrl}
               target="_blank"
               rel="noreferrer"
               title="Official Facebook Page"
@@ -80,7 +81,7 @@ export default function QuickDemoBar() {
 
             {/* TikTok */}
             <a
-              href="https://www.tiktok.com/@oasis_res0rt"
+              href={SITE_CONFIG.tiktokUrl}
               target="_blank"
               rel="noreferrer"
               title="Official TikTok"
@@ -93,7 +94,7 @@ export default function QuickDemoBar() {
 
             {/* Instagram */}
             <a
-              href="https://www.instagram.com/oasis_resort_skardu/?"
+              href={SITE_CONFIG.instagramUrl}
               target="_blank"
               rel="noreferrer"
               title="Official Instagram"

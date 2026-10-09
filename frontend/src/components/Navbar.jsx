@@ -7,6 +7,7 @@ import {
   ArrowRight, Tag, HelpCircle, Phone, Mail, Compass, Star,
   User, LogOut, MessageCircle, MapPin, BedDouble, Utensils, Shield
 } from 'lucide-react';
+import { SITE_CONFIG } from '../config/siteConfig';
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -698,14 +699,14 @@ export default function Navbar() {
                 </span>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <a
-                    href="tel:+923081472888"
+                    href={`tel:${SITE_CONFIG.phoneRaw}`}
                     className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-2 text-[#EAEBE8] transition"
                   >
                     <Phone className="w-3.5 h-3.5 text-emerald-400" />
                     <span className="text-[11px] font-semibold truncate">Call Resort</span>
                   </a>
                   <a
-                    href="https://wa.me/923081472888"
+                    href={SITE_CONFIG.whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 flex items-center gap-2 text-emerald-300 transition"
@@ -722,10 +723,10 @@ export default function Navbar() {
             <div className="p-4 bg-[#141814] border-t border-white/10 text-center space-y-1">
               <div className="flex items-center justify-center gap-1 text-[11px] text-[#A8AD94]">
                 <MapPin className="w-3 h-3 text-[#E3B94E]" />
-                <span>Katpana Cold Desert, Skardu, Pakistan</span>
+                <span>{SITE_CONFIG.address}</span>
               </div>
               <p className="text-[9.5px] text-[#A8AD94]/60 font-mono tracking-wider">
-                Altitude: 2,228m • 5-Star Eco Resort
+                Altitude: {SITE_CONFIG.altitude} • 5-Star Eco Resort
               </p>
             </div>
 

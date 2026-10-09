@@ -261,7 +261,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const slipDir = path.join(__dirname, '../uploads/slips');
+const baseUploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+const slipDir = path.join(baseUploadDir, 'slips');
 if (!fs.existsSync(slipDir)) fs.mkdirSync(slipDir, { recursive: true });
 
 const slipStorage = multer.diskStorage({

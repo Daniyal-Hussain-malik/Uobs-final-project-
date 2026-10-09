@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api/client';
 import { MapPin, Phone, Mail, Clock, CheckCircle, Send } from 'lucide-react';
+import { SITE_CONFIG } from '../config/siteConfig';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -60,8 +61,8 @@ export default function Contact() {
                 <MapPin className="w-5 h-5 text-[#C5A880] shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-[#EAEBE8]">Resort Address</h4>
-                  <p className="text-[#A6ADA1]">Katpana Cold Desert, Skardu, Gilgit-Baltistan 16100, Pakistan</p>
-                  <p className="text-[11px] text-[#819170] mt-1 font-medium">15 Minutes (11 km) from Skardu International Airport</p>
+                  <p className="text-[#A6ADA1]">{SITE_CONFIG.address}</p>
+                  <p className="text-[11px] text-[#819170] mt-1 font-medium">{SITE_CONFIG.airportDistance}</p>
                 </div>
               </div>
 
@@ -69,7 +70,7 @@ export default function Contact() {
                 <Phone className="w-5 h-5 text-[#787C68] shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-[#EAEBE8]">Front Desk & WhatsApp</h4>
-                  <p className="text-[#A6ADA1]">0308-1472888 / 0344-5537788</p>
+                  <p className="text-[#A6ADA1]">{SITE_CONFIG.phonePrimary} / {SITE_CONFIG.phoneSecondary}</p>
                 </div>
               </div>
 
@@ -77,7 +78,7 @@ export default function Contact() {
                 <Mail className="w-5 h-5 text-[#C5A880] shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-[#EAEBE8]">Email Inquiries</h4>
-                  <p className="text-[#A6ADA1]">oasisresortskardu@gmail.com</p>
+                  <p className="text-[#A6ADA1]">{SITE_CONFIG.email}</p>
                 </div>
               </div>
 
@@ -85,7 +86,7 @@ export default function Contact() {
                 <Clock className="w-5 h-5 text-[#819170] shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-[#EAEBE8]">Check-In / Check-Out Hours</h4>
-                  <p className="text-[#A6ADA1]">Check-in: 14:00 PM • Check-out: 11:30 AM (Early check-in flexible for morning flights)</p>
+                  <p className="text-[#A6ADA1]">Check-in: {SITE_CONFIG.checkInTime} • Check-out: {SITE_CONFIG.checkOutTime} (Early check-in flexible for morning flights)</p>
                 </div>
               </div>
             </div>

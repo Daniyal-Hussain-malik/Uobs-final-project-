@@ -11,7 +11,7 @@ const dbConfig = {
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'oasis_resort',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10),
   queueLimit: 0,
   dateStrings: true,
 };
@@ -308,15 +308,18 @@ async function initDatabase() {
 }
 
 async function seedDatabase() {
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  const defaultAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'password123';
+  const defaultAdminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@oasisresort.pk';
+  const defaultAdminPhone = process.env.DEFAULT_ADMIN_PHONE || '+92 300 1234567';
+  const hashedPassword = await bcrypt.hash(defaultAdminPassword, 10);
 
   // 1. Seed Users
   await query(
     `INSERT INTO users (name, email, phone, role, password) VALUES
-    ('Resort Admin', 'admin@oasisresort.pk', '+92 300 1234567', 'admin', ?),
+    ('Resort Admin', ?, ?, 'admin', ?),
     ('Reception Front Desk', 'reception@oasisresort.pk', '+92 311 9876543', 'reception', ?),
     ('Malik Tariq', 'guest@oasisresort.pk', '+92 321 5558899', 'guest', ?)`,
-    [hashedPassword, hashedPassword, hashedPassword]
+    [defaultAdminEmail, defaultAdminPhone, hashedPassword, hashedPassword, hashedPassword]
   );
 
   // 2. Seed Rooms

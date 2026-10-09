@@ -1,5 +1,6 @@
 import React from 'react';
 import { Printer, X, CheckCircle, ShieldCheck, Calendar, Clock, Users, MapPin, Phone, Mail, Award } from 'lucide-react';
+import { SITE_CONFIG } from '../config/siteConfig';
 
 export default function ServiceInvoiceModal({ isOpen, onClose, booking }) {
   if (!isOpen || !booking) return null;
@@ -58,19 +59,19 @@ export default function ServiceInvoiceModal({ isOpen, onClose, booking }) {
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="font-display font-extrabold text-2xl sm:text-3xl tracking-widest text-[#E3B94E] uppercase print:text-black">
-                  OASIS RESORT
+                  {SITE_CONFIG.resortName}
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-[#E3B94E]/10 border border-[#E3B94E]/30 text-[#E3B94E] uppercase font-bold tracking-widest print:border-black print:text-black">
                   Skardu
                 </span>
               </div>
               <p className="text-xs font-light text-[#A8AD94] tracking-wider uppercase print:text-gray-600">
-                Cold Desert • Katpana Dunes • Gilgit-Baltistan
+                {SITE_CONFIG.resortSubtitle}
               </p>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#A8AD94] pt-1 print:text-gray-600">
-                <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-[#E3B94E] print:text-black"/> +92 344 8603636</span>
-                <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-[#E3B94E] print:text-black"/> info@oasisresortskardu.com</span>
-                <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-[#E3B94E] print:text-black"/> Katpana Cold Desert, Skardu</span>
+                <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-[#E3B94E] print:text-black"/> {SITE_CONFIG.phoneConcierge}</span>
+                <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-[#E3B94E] print:text-black"/> {SITE_CONFIG.emailBilling}</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-[#E3B94E] print:text-black"/> {SITE_CONFIG.address}</span>
               </div>
             </div>
 
@@ -252,7 +253,7 @@ export default function ServiceInvoiceModal({ isOpen, onClose, booking }) {
               <li>Please present this digital or printed voucher to the OASIS Concierge or Front Desk upon arrival.</li>
               <li>Guests are requested to arrive 15 minutes prior to their reserved sitting or excursion departure time.</li>
               <li>Weather-dependent activities (such as dunes 4x4 or paragliding) are subject to high-altitude Karakoram safety regulations.</li>
-              <li>For any schedule amendments or dietary preferences, contact the Front Desk directly at +92 344 8603636.</li>
+              <li>For any schedule amendments or dietary preferences, contact the Front Desk directly at {SITE_CONFIG.phoneConcierge}.</li>
             </ul>
           </div>
 

@@ -8,7 +8,8 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 
 // File upload setup for slips
-const uploadDir = path.join(__dirname, '../uploads/slips');
+const baseUploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+const uploadDir = path.join(baseUploadDir, 'slips');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }

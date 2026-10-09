@@ -20,9 +20,13 @@ const adminRoutes = require('./routes/admin.routes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middlewares
+// Middlewares - Dynamic CORS based on FRONTEND_URL environment variable
+const allowedOrigins = process.env.FRONTEND_URL
+  ? (process.env.FRONTEND_URL === '*' ? '*' : process.env.FRONTEND_URL.split(',').map((u) => u.trim()))
+  : '*';
+
 app.use(cors({
-  origin: '*',
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json());
@@ -31,8 +35,9 @@ app.use(morgan('dev'));
 
 const fs = require('fs');
 
-// Static uploads directory (for receipts, payment slips, avatars)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Static uploads directory (supports custom UPLOAD_DIR via env)
+const uploadsPath = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsPath));
 
 // Serve Frontend Production Build if present (Hostinger Fullstack / Monorepo deployment)
 const candidateStaticDirs = [

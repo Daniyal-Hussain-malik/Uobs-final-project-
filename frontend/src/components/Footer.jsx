@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, MapPin, Phone, Mail, Instagram, Facebook, Compass } from 'lucide-react';
+import { SITE_CONFIG } from '../config/siteConfig';
 
 export default function Footer() {
   return (
@@ -13,12 +14,12 @@ export default function Footer() {
             <Link to="/" className="flex items-center space-x-3 group">
               <img
                 src="/logo.png"
-                alt="OASIS Resort"
+                alt={SITE_CONFIG.resortName}
                 className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
               />
               <div>
                 <span className="font-display text-lg text-[#EAEBE8] font-bold tracking-wider block">
-                  OASIS RESORT
+                  {SITE_CONFIG.resortName.toUpperCase()}
                 </span>
                 <span className="text-[8px] text-[#E3B94E] tracking-[0.25em] font-mono block">
                   ★★★★★
@@ -31,7 +32,7 @@ export default function Footer() {
             <div className="flex space-x-3 text-[#A8AD94]">
               {/* Facebook */}
               <a
-                href="https://www.facebook.com/OasissResorts/"
+                href={SITE_CONFIG.facebookUrl}
                 target="_blank"
                 rel="noreferrer"
                 title="Official Facebook"
@@ -44,7 +45,7 @@ export default function Footer() {
 
               {/* TikTok */}
               <a
-                href="https://www.tiktok.com/@oasis_res0rt"
+                href={SITE_CONFIG.tiktokUrl}
                 target="_blank"
                 rel="noreferrer"
                 title="Official TikTok"
@@ -57,7 +58,7 @@ export default function Footer() {
 
               {/* Instagram */}
               <a
-                href="https://www.instagram.com/oasis_resort_skardu/?"
+                href={SITE_CONFIG.instagramUrl}
                 target="_blank"
                 rel="noreferrer"
                 title="Official Instagram"
@@ -106,17 +107,17 @@ export default function Footer() {
             <ul className="space-y-3 text-xs">
               <li className="flex items-start space-x-2">
                 <MapPin className="w-4 h-4 text-[#C5A880] shrink-0 mt-0.5" />
-                <span>Katpana Cold Desert, Skardu, Gilgit-Baltistan 16100, Pakistan</span>
+                <span>{SITE_CONFIG.address}</span>
               </li>
               <li className="flex items-center space-x-2">
                 <Phone className="w-4 h-4 text-[#787C68] shrink-0" />
-                <a href="tel:03081472888" className="hover:text-[#EAEBE8] transition">0308-1472888</a>
+                <a href={`tel:${SITE_CONFIG.phonePrimary.replace(/[^0-9+]/g, '')}`} className="hover:text-[#EAEBE8] transition">{SITE_CONFIG.phonePrimary}</a>
                 <span>/</span>
-                <a href="tel:03445537788" className="hover:text-[#EAEBE8] transition">0344-5537788</a>
+                <a href={`tel:${SITE_CONFIG.phoneSecondary.replace(/[^0-9+]/g, '')}`} className="hover:text-[#EAEBE8] transition">{SITE_CONFIG.phoneSecondary}</a>
               </li>
               <li className="flex items-center space-x-2">
                 <Mail className="w-4 h-4 text-[#C5A880] shrink-0" />
-                <a href="mailto:oasisresortskardu@gmail.com" className="hover:text-[#EAEBE8] transition">oasisresortskardu@gmail.com</a>
+                <a href={`mailto:${SITE_CONFIG.email}`} className="hover:text-[#EAEBE8] transition">{SITE_CONFIG.email}</a>
               </li>
             </ul>
           </div>
