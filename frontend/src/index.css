@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #2C332C;
+  --dark: #232A23;
+  --ink: #EAEBE8;
+  --muted: rgba(234, 235, 232, 0.64);
+  --faint: rgba(234, 235, 232, 0.4);
+  --sage: #787C68;
+  --sage-hover: #868B74;
+  --sage-d: #525646;
+  --gold: #E3B94E;
+  --sand: #C5A880;
+  --line: rgba(234, 235, 232, 0.15);
+  color-scheme: dark;
+}
+
+body {
+  font-family: 'Jost', sans-serif;
+  background-color: #2C332C;
+  color: #EAEBE8;
+  overflow-x: hidden;
+}
+
+/* Luxury Typography Utilities */
+.font-script {
+  font-family: 'Great Vibes', cursive;
+}
+
+.font-display {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+/* Luxury Glassmorphism & Cards */
+.glass-panel {
+  background: rgba(44, 51, 44, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(234, 235, 232, 0.15);
+}
+
+.glass-card {
+  background: rgba(35, 42, 35, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(234, 235, 232, 0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.arched-top {
+  border-radius: 120px 120px 20px 20px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #121813;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A362C;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6D7C5D;
+}
+
+/* Clean Print Styles for Luxury Booking Voucher & Service Invoices */
+@media print {
+  header, footer, nav, button, .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+  #printable-voucher, #service-invoice-sheet {
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  #printable-voucher *, #service-invoice-sheet * {
+    color: #1f2937 !important;
+    border-color: #e5e7eb !important;
+  }
+}
+

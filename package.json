@@ -1,0 +1,23 @@
+{
+  "name": "oasis-resort-skardu",
+  "version": "1.0.0",
+  "description": "OASIS Resort Katpana, Skardu - React.js, Node.js & MySQL Full-Stack Architecture",
+  "scripts": {
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "build": "npm --prefix frontend run build",
+    "db:init": "npm --prefix backend run db:init",
+    "start:backend": "npm --prefix backend start",
+    "install:all": "npm --prefix backend install && npm --prefix frontend install"
+  },
+  "keywords": [
+    "react",
+    "node",
+    "express",
+    "mysql",
+    "resort",
+    "skardu"
+  ],
+  "author": "OASIS Resort Development Team",
+  "license": "ISC"
+}
