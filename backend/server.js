@@ -41,8 +41,10 @@ app.use('/uploads', express.static(uploadsPath));
 
 // Serve Frontend Production Build if present (Hostinger Fullstack / Monorepo deployment)
 const candidateStaticDirs = [
-  path.join(__dirname, '../frontend/dist'),
   path.join(__dirname, 'public'),
+  path.join(__dirname, '../frontend/dist'),
+  path.join(process.cwd(), 'backend/public'),
+  path.join(process.cwd(), 'public'),
   path.join(__dirname, 'dist'),
   path.join(__dirname, '../public_html'),
 ];
