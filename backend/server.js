@@ -29,8 +29,8 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(morgan('dev'));
 
 const fs = require('fs');
@@ -91,6 +91,12 @@ app.use((req, res) => {
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err);
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({
+      success: false,
+      message: 'File size exceeds maximum allowed upload limit (300MB).',
+    });
+  }
   res.status(500).json({
     success: false,
     message: err.message || 'Internal Server Error',

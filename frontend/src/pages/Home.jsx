@@ -14,7 +14,6 @@ import GuestSelector from '../components/GuestSelector';
 export default function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showHeroVideoModal, setShowHeroVideoModal] = useState(false);
   const navigate = useNavigate();
 
   // Booking Bar State (Default 1 Night Stay)
@@ -112,13 +111,18 @@ export default function Home() {
         <div className="absolute inset-0 z-0 overflow-hidden">
           {hero.media_type === 'video' && hero.video_url ? (
             <video
+              key={hero.video_url}
               autoPlay
               loop
               muted
               playsInline
+              preload="auto"
               poster={hero.image_url || '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG'}
               className="w-full h-full object-cover scale-105"
             >
+              {hero.video_url.toLowerCase().endsWith('.mov') && (
+                <source src={hero.video_url.replace(/\.mov$/i, '.mp4')} type="video/mp4" />
+              )}
               <source src={hero.video_url} type="video/mp4" />
               <source src={hero.video_url} type="video/quicktime" />
               <source src={hero.video_url} />
@@ -130,7 +134,7 @@ export default function Home() {
               className="w-full h-full object-cover scale-105 animate-[kenburns_24s_infinite_alternate]"
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#2C332C]/85 via-[#2C332C]/60 to-[#2C332C]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#2C332C]/80 via-[#2C332C]/50 to-[#2C332C]" />
         </div>
 
         {/* Hero Central Header */}
@@ -150,21 +154,6 @@ export default function Home() {
           <p className="max-w-2xl mx-auto font-display italic text-lg sm:text-xl text-[#EAEBE8]/80 leading-relaxed font-normal">
             {hero.subtitle || 'A secluded resort where cold desert dunes embrace Karakoram peaks — refined hospitality.'}
           </p>
-
-          {hero.video_url && (
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setShowHeroVideoModal(true)}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-semibold text-[#EAEBE8] backdrop-blur transition shadow-md group"
-              >
-                <div className="w-5 h-5 rounded-full bg-[#E3B94E] text-[#232A23] flex items-center justify-center group-hover:scale-110 transition">
-                  <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
-                </div>
-                <span>{hero.video_button_text || 'Watch Resort Video Tour'}</span>
-              </button>
-            </div>
-          )}
 
           {/* Floating Booking Bar (Official V2 Style with Flatpickr & Guest Counter) */}
           <div className="pt-6 relative z-30">
@@ -665,37 +654,6 @@ export default function Home() {
 
         </div>
       </section>
-
-      {/* Video Modal Lightbox */}
-      {showHeroVideoModal && hero.video_url && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-4xl bg-[#232A23] border border-white/20 rounded-3xl overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/30">
-              <div className="flex items-center gap-2">
-                <Play className="w-4 h-4 text-[#E3B94E]" />
-                <span className="font-display text-sm font-bold text-[#EAEBE8]">Oasis Resort Skardu — Video Tour</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowHeroVideoModal(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-[#EAEBE8] flex items-center justify-center transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="aspect-video bg-black flex items-center justify-center">
-              <video
-                controls
-                autoPlay
-                className="w-full h-full object-contain"
-                src={hero.video_url}
-              >
-                Your browser does not support video playback.
-              </video>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

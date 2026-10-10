@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import { Play, X, Maximize2 } from 'lucide-react';
+
+const isVideoMedia = (url) => {
+  if (!url) return false;
+  return /\.(mp4|mov|webm|m4v|ogv|mkv|avi|3gp)($|\?)/i.test(String(url));
+};
 
 export default function Gallery() {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [activeMediaItem, setActiveMediaItem] = useState(null);
 
   useEffect(() => {
     async function loadGallery() {
@@ -29,7 +36,7 @@ export default function Gallery() {
         
         <div className="text-center max-w-2xl mx-auto space-y-3">
           <span className="text-[11px] uppercase tracking-[0.25em] text-[#A8AD94] font-medium">
-            Resort Visual Gallery • Skardu
+            Resort Visual Gallery &amp; Cinema • Skardu
           </span>
           <h1 className="font-script text-5xl sm:text-6xl text-[#EAEBE8]">
             The Oasis Gallery
@@ -50,7 +57,7 @@ export default function Gallery() {
                 : 'bg-[#232A23] text-[#A8AD94] hover:text-[#EAEBE8] border border-white/10'
             }`}
           >
-            All Photography
+            All Media ({items.length})
           </button>
           {categories.map((cat) => (
             <button
@@ -69,23 +76,110 @@ export default function Gallery() {
 
         {/* Gallery Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {items.map((item) => (
-            <div key={item.id} className="group relative rounded-2xl overflow-hidden aspect-square bg-[#232A23] border border-white/10 shadow-xl">
-              <img
-                src={item.image_url}
-                alt={item.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                <span className="text-[10px] text-[#E3B94E] uppercase tracking-wider font-semibold">{item.category}</span>
-                <h3 className="text-xs font-bold text-white leading-snug">{item.title}</h3>
+          {items.map((item) => {
+            const isVideo = isVideoMedia(item.image_url);
+            return (
+              <div
+                key={item.id}
+                onClick={() => setActiveMediaItem(item)}
+                className="group relative rounded-2xl overflow-hidden aspect-square bg-[#232A23] border border-white/10 shadow-xl cursor-pointer hover:border-[#E3B94E]/50 transition-all duration-300"
+              >
+                {isVideo ? (
+                  <div className="relative w-full h-full bg-[#151915] flex items-center justify-center">
+                    <video
+                      src={item.image_url}
+                      className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                      muted
+                      preload="metadata"
+                      playsInline
+                    />
+                    <div className="absolute top-3 left-3 z-10">
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/90 text-white border border-rose-400/40 shadow">
+                        VIDEO REEL
+                      </span>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm text-[#E3B94E] flex items-center justify-center border border-white/20 shadow-2xl group-hover:scale-110 group-hover:bg-[#E3B94E] group-hover:text-[#232A23] transition-all duration-300">
+                        <Play className="w-5 h-5 fill-current ml-0.5" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <img
+                    src={item.image_url}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                  <span className="text-[10px] text-[#E3B94E] uppercase tracking-wider font-semibold">
+                    {item.category}
+                  </span>
+                  <h3 className="text-xs font-bold text-white leading-snug drop-shadow">
+                    {item.title}
+                  </h3>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
+        {items.length === 0 && (
+          <div className="py-20 text-center text-[#A8AD94] text-xs">
+            No media found for the selected category.
+          </div>
+        )}
+
       </div>
+
+      {/* Media Lightbox Modal */}
+      {activeMediaItem && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 animate-fadeIn"
+          onClick={() => setActiveMediaItem(null)}
+        >
+          <div
+            className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setActiveMediaItem(null)}
+              className="absolute -top-10 right-0 text-white/70 hover:text-white p-1 rounded-full transition text-sm font-bold flex items-center gap-1"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <div className="w-full rounded-2xl overflow-hidden border border-white/20 bg-black shadow-2xl flex items-center justify-center max-h-[80vh]">
+              {isVideoMedia(activeMediaItem.image_url) ? (
+                <video
+                  src={activeMediaItem.image_url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="w-full max-h-[78vh] object-contain"
+                />
+              ) : (
+                <img
+                  src={activeMediaItem.image_url}
+                  alt={activeMediaItem.title}
+                  className="w-full max-h-[78vh] object-contain"
+                />
+              )}
+            </div>
+
+            <div className="mt-4 text-center space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#E3B94E]">
+                {activeMediaItem.category}
+              </span>
+              <h3 className="text-base font-bold text-white">
+                {activeMediaItem.title}
+              </h3>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

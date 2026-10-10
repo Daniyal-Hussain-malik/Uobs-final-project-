@@ -929,11 +929,11 @@ const galleryStorage = multer.diskStorage({
 
 const uploadGalleryMedia = multer({
   storage: galleryStorage,
-  limits: { fileSize: 30 * 1024 * 1024 }, // 30MB
+  limits: { fileSize: 300 * 1024 * 1024 }, // 300MB for high-res photos and 4K video reels
   fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|webp|avif|jfif|bmp|heic/i;
+    const allowed = /jpeg|jpg|png|webp|avif|jfif|bmp|heic|mp4|mov|webm|m4v|avi|mkv|3gp/i;
     const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
-    if (!ext || allowed.test(ext) || allowed.test(file.mimetype)) {
+    if (!ext || allowed.test(ext) || allowed.test(file.mimetype) || (file.mimetype && (file.mimetype.startsWith('video/') || file.mimetype.startsWith('image/')))) {
       cb(null, true);
     } else {
       cb(null, true); // accept safely

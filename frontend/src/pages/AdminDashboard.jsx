@@ -11,6 +11,11 @@ import {
   Film, Play, Video, Folder, Copy, CheckCircle2, Maximize2, Sliders, UserCheck, Briefcase
 } from 'lucide-react';
 
+const isVideoMedia = (url) => {
+  if (!url) return false;
+  return /\.(mp4|mov|webm|m4v|ogv|mkv|avi|3gp)($|\?)/i.test(String(url));
+};
+
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -1592,7 +1597,7 @@ export default function AdminDashboard() {
                   className="px-5 py-2 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition shadow-lg shrink-0"
                 >
                   <Upload className="w-4 h-4" />
-                  <span>Upload Photo</span>
+                  <span>Upload Media (Photo / Video)</span>
                 </button>
               </div>
             </div>
@@ -1710,20 +1715,43 @@ export default function AdminDashboard() {
                       key={img.id}
                       className="bg-[#232A23] border border-white/10 hover:border-white/20 rounded-3xl overflow-hidden shadow-xl flex flex-col justify-between group transition"
                     >
-                      {/* Image Preview Container */}
-                      <div className="relative aspect-video sm:aspect-square bg-black/40 overflow-hidden">
-                        <img
-                          src={img.image_url}
-                          alt={img.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
+                      {/* Media Preview Container */}
+                      <div className="relative aspect-video sm:aspect-square bg-black/40 overflow-hidden flex items-center justify-center">
+                        {isVideoMedia(img.image_url) ? (
+                          <div className="relative w-full h-full bg-[#151915]">
+                            <video
+                              src={img.image_url}
+                              className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition"
+                              muted
+                              preload="metadata"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="w-10 h-10 rounded-full bg-black/60 text-[#E3B94E] flex items-center justify-center border border-white/20 shadow-lg group-hover:scale-110 transition">
+                                <Play className="w-4 h-4 fill-current ml-0.5" />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <img
+                            src={img.image_url}
+                            alt={img.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
 
                         {/* Top Badges */}
                         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1 pointer-events-none">
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[#E3B94E] border border-white/10 truncate max-w-[150px]">
-                            {img.category}
-                          </span>
+                          <div className="flex items-center gap-1 max-w-[170px]">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[#E3B94E] border border-white/10 truncate">
+                              {img.category}
+                            </span>
+                            {isVideoMedia(img.image_url) && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500/80 text-white border border-rose-400/40 shrink-0">
+                                VIDEO
+                              </span>
+                            )}
+                          </div>
                           {img.is_featured ? (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 backdrop-blur-md text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
                               <Star className="w-3 h-3 fill-amber-300 text-amber-300" /> Featured
@@ -2008,7 +2036,7 @@ export default function AdminDashboard() {
                           </button>
 
                           {/* Add to Gallery button */}
-                          {item.type === 'image' && !item.in_gallery && (
+                          {!item.in_gallery && (
                             <button
                               type="button"
                               onClick={() =>
@@ -4481,9 +4509,9 @@ export default function AdminDashboard() {
             <div className="bg-[#232A23] max-w-lg w-full p-6 sm:p-7 rounded-3xl border border-white/20 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
               <div className="flex justify-between items-center border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
-                  <Image className="w-5 h-5 text-[#E3B94E]" />
+                  <Film className="w-5 h-5 text-[#E3B94E]" />
                   <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
-                    {galleryImageModal.mode === 'add' ? 'Upload Gallery Photo' : 'Edit Photo Details'}
+                    {galleryImageModal.mode === 'add' ? 'Upload Gallery Media (Photo / Video)' : 'Edit Media Details'}
                   </h3>
                 </div>
                 <button
@@ -4495,10 +4523,10 @@ export default function AdminDashboard() {
               </div>
 
               <form onSubmit={handleSaveGalleryImage} className="space-y-4 text-xs">
-                {/* Photo Upload or Preview */}
+                {/* Media Upload or Preview */}
                 <div>
                   <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
-                    Photo File or URL *
+                    Photo / Video File or URL *
                   </label>
 
                   {/* Drag/Drop & File Input */}
@@ -4506,14 +4534,14 @@ export default function AdminDashboard() {
                     <label className="border-2 border-dashed border-white/20 hover:border-[#787C68] rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition bg-white/5 hover:bg-white/10 group">
                       <Upload className="w-8 h-8 text-[#A8AD94] group-hover:text-[#E3B94E] mb-2 transition" />
                       <span className="text-xs font-semibold text-[#EAEBE8]">
-                        Click to select image file from computer
+                        Click to select photo or video file from computer / mobile
                       </span>
                       <span className="text-[10px] text-[#A8AD94] mt-0.5">
-                        JPG, PNG, WEBP, AVIF up to 15MB
+                        JPG, PNG, WEBP, MP4, MOV, WEBM up to 300MB
                       </span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,video/*"
                         onChange={(e) => {
                           const file = e.target.files[0];
                           if (file) {
@@ -4534,7 +4562,7 @@ export default function AdminDashboard() {
                       <span className="text-[10px] text-[#A8AD94] uppercase font-bold shrink-0">Or URL:</span>
                       <input
                         type="url"
-                        placeholder="https://images.unsplash.com/... or paste image URL"
+                        placeholder="https://... or paste photo/video URL"
                         value={galleryImageModal.image.image_url || ''}
                         onChange={(e) =>
                           setGalleryImageModal((prev) => ({
@@ -4563,12 +4591,21 @@ export default function AdminDashboard() {
 
                   {/* Active Preview */}
                   {(galleryImageModal.preview || galleryImageModal.image.image_url) && (
-                    <div className="mt-3 relative rounded-2xl overflow-hidden aspect-video bg-black/40 border border-white/15">
-                      <img
-                        src={galleryImageModal.preview || galleryImageModal.image.image_url}
-                        alt="Photo Preview"
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="mt-3 relative rounded-2xl overflow-hidden aspect-video bg-black/60 border border-white/15 flex items-center justify-center">
+                      {(galleryImageModal.file?.type?.startsWith('video') || isVideoMedia(galleryImageModal.file?.name || galleryImageModal.preview || galleryImageModal.image.image_url)) ? (
+                        <video
+                          src={galleryImageModal.preview || galleryImageModal.image.image_url}
+                          controls
+                          playsInline
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <img
+                          src={galleryImageModal.preview || galleryImageModal.image.image_url}
+                          alt="Media Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                       <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/70 text-[10px] text-white">
                         {galleryImageModal.file ? `File: ${galleryImageModal.file.name}` : 'URL Preview'}
                       </span>
@@ -4699,7 +4736,7 @@ export default function AdminDashboard() {
                   <RefreshCw className="w-5 h-5 text-[#E3B94E]" />
                   <div>
                     <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
-                      Replace Gallery Image
+                      Replace Gallery Media
                     </h3>
                     <p className="text-[11px] text-[#A8AD94] truncate max-w-sm">
                       {replaceImageModal.image.title} ({replaceImageModal.image.category})
@@ -4718,13 +4755,22 @@ export default function AdminDashboard() {
                 {/* Comparison Grid */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <span className="text-[10px] text-[#A8AD94] font-bold uppercase block">Current Image</span>
-                    <div className="aspect-square rounded-2xl overflow-hidden bg-black/40 border border-white/10">
-                      <img
-                        src={replaceImageModal.image.image_url}
-                        alt="Current"
-                        className="w-full h-full object-cover"
-                      />
+                    <span className="text-[10px] text-[#A8AD94] font-bold uppercase block">Current Media</span>
+                    <div className="aspect-square rounded-2xl overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center">
+                      {isVideoMedia(replaceImageModal.image.image_url) ? (
+                        <video
+                          src={replaceImageModal.image.image_url}
+                          controls
+                          playsInline
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <img
+                          src={replaceImageModal.image.image_url}
+                          alt="Current"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -4732,14 +4778,23 @@ export default function AdminDashboard() {
                     <span className="text-[10px] text-[#E3B94E] font-bold uppercase block">New Replacement</span>
                     <div className="aspect-square rounded-2xl overflow-hidden bg-black/40 border border-[#E3B94E]/40 flex items-center justify-center">
                       {replaceImageModal.preview || replaceImageModal.url ? (
-                        <img
-                          src={replaceImageModal.preview || replaceImageModal.url}
-                          alt="Replacement Preview"
-                          className="w-full h-full object-cover"
-                        />
+                        replaceImageModal.file?.type?.startsWith('video') || isVideoMedia(replaceImageModal.file?.name || replaceImageModal.preview || replaceImageModal.url) ? (
+                          <video
+                            src={replaceImageModal.preview || replaceImageModal.url}
+                            controls
+                            playsInline
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <img
+                            src={replaceImageModal.preview || replaceImageModal.url}
+                            alt="Replacement Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        )
                       ) : (
                         <span className="text-[10px] text-[#A8AD94] text-center p-3">
-                          Select a new file or paste URL below
+                          Select a new photo/video file or paste URL below
                         </span>
                       )}
                     </div>
@@ -4751,14 +4806,14 @@ export default function AdminDashboard() {
                   <label className="border-2 border-dashed border-[#E3B94E]/30 hover:border-[#E3B94E] rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition bg-white/5 hover:bg-white/10 group">
                     <Upload className="w-6 h-6 text-[#E3B94E] mb-1" />
                     <span className="text-xs font-semibold text-[#EAEBE8]">
-                      Choose Replacement Image from Computer
+                      Choose Replacement File from Computer / Mobile
                     </span>
                     <span className="text-[10px] text-[#A8AD94]">
-                      Will immediately replace the file
+                      JPG, PNG, WEBP, MP4, MOV, WEBM up to 300MB
                     </span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,video/*"
                       onChange={(e) => {
                         const file = e.target.files[0];
                         if (file) {
@@ -5346,9 +5401,9 @@ export default function AdminDashboard() {
             <div className="bg-[#232A23] max-w-4xl w-full p-6 rounded-3xl border border-white/20 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
               <div className="flex justify-between items-center border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
-                  <Image className="w-5 h-5 text-[#E3B94E]" />
+                  <Film className="w-5 h-5 text-[#E3B94E]" />
                   <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
-                    Select Image from Media Files
+                    Select Photo or Video from Media Files
                   </h3>
                 </div>
                 <button
@@ -5360,38 +5415,46 @@ export default function AdminDashboard() {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {mediaLibraryList
-                  .filter((item) => item.type === 'image')
-                  .map((item) => (
-                    <button
-                      key={item.url}
-                      type="button"
-                      onClick={() => {
-                        setGalleryImageModal((prev) => ({
-                          ...prev,
-                          image: {
-                            ...prev.image,
-                            image_url: item.url,
-                            title: prev.image.title || item.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' '),
-                          },
-                          file: null,
-                          preview: item.url,
-                        }));
-                        setMediaPickerForGallery(false);
-                      }}
-                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
-                    >
-                      <div className="aspect-square bg-black/40 overflow-hidden relative">
+                {mediaLibraryList.map((item) => (
+                  <button
+                    key={item.url}
+                    type="button"
+                    onClick={() => {
+                      setGalleryImageModal((prev) => ({
+                        ...prev,
+                        image: {
+                          ...prev.image,
+                          image_url: item.url,
+                          title: prev.image.title || item.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' '),
+                        },
+                        file: null,
+                        preview: item.url,
+                      }));
+                      setMediaPickerForGallery(false);
+                    }}
+                    className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                  >
+                    <div className="aspect-square bg-black/40 overflow-hidden relative flex items-center justify-center">
+                      {item.type === 'video' ? (
+                        <div className="relative w-full h-full flex items-center justify-center bg-[#151915]">
+                          <video src={item.url} muted preload="metadata" className="w-full h-full object-cover opacity-80" />
+                          <div className="w-8 h-8 rounded-full bg-black/60 text-[#E3B94E] flex items-center justify-center border border-white/20 shadow pointer-events-none">
+                            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                          </div>
+                          <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[8px] bg-rose-500/80 text-white font-bold">VIDEO</span>
+                        </div>
+                      ) : (
                         <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
-                          {item.size}
-                        </span>
-                      </div>
-                      <div className="p-2">
-                        <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
-                      </div>
-                    </button>
-                  ))}
+                      )}
+                      <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
+                        {item.size}
+                      </span>
+                    </div>
+                    <div className="p-2">
+                      <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </div>

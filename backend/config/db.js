@@ -398,7 +398,7 @@ async function initDatabase() {
     const defaultSettings = [
       ['hero_media_type', 'image'],
       ['hero_image_url', '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG'],
-      ['hero_video_url', '/uploads/rooms/fbac89b9f17e4ef5939dde3f37a7110d.MOV'],
+      ['hero_video_url', '/uploads/rooms/fbac89b9f17e4ef5939dde3f37a7110d.mp4'],
       ['hero_badge', 'Katpana Cold Desert, Skardu • 2,228M'],
       ['hero_title', 'Experience Nature in Luxury'],
       ['hero_subtitle', 'Katpana Cold Desert, Skardu — Where the serene Karakoram peaks meet unparalleled Balti warmth and modern five-star comfort.'],
@@ -412,6 +412,14 @@ async function initDatabase() {
         'INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES (?, ?)',
         [sKey, sVal]
       );
+    }
+
+    // Automatically migrate any legacy .MOV files to browser-compatible .mp4
+    try {
+      await p.query("UPDATE site_settings SET setting_value = REPLACE(setting_value, '.MOV', '.mp4') WHERE setting_key = 'hero_video_url' AND setting_value LIKE '%.MOV%'");
+      await p.query("UPDATE media_gallery SET image_url = REPLACE(image_url, '.MOV', '.mp4') WHERE image_url LIKE '%.MOV%'");
+    } catch (migrErr) {
+      // Ignore if table not created yet
     }
 
     // 4. Check if demo seeding is needed
