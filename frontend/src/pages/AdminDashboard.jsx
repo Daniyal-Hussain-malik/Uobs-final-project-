@@ -87,6 +87,8 @@ export default function AdminDashboard() {
   const [savingTeamMember, setSavingTeamMember] = useState(false);
   const [mediaPickerForTeam, setMediaPickerForTeam] = useState(false);
   const [mediaPickerForGallery, setMediaPickerForGallery] = useState(false);
+  const [mediaPickerForRoomFeatured, setMediaPickerForRoomFeatured] = useState(false);
+  const [mediaPickerForRoomGallery, setMediaPickerForRoomGallery] = useState(false);
 
   // Uploading state
   const [uploadingFeatured, setUploadingFeatured] = useState(false);
@@ -3562,17 +3564,30 @@ export default function AdminDashboard() {
                     <label className="text-[10px] text-[#A8AD94] uppercase font-bold block">
                       Featured Listing Image *
                     </label>
-                    <label className="cursor-pointer text-[10px] bg-[#787C68] hover:bg-[#868B74] text-[#232A23] px-3 py-1 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1 transition shadow-sm">
-                      <Upload className="w-3 h-3" />
-                      <span>{uploadingFeatured ? 'Uploading...' : 'Upload Image File'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        disabled={uploadingFeatured}
-                        onChange={handleUploadFeaturedImage}
-                        className="hidden"
-                      />
-                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          loadMediaLibrary();
+                          setMediaPickerForRoomFeatured(true);
+                        }}
+                        className="text-[10px] bg-[#E3B94E]/20 hover:bg-[#E3B94E] text-[#E3B94E] hover:text-[#232A23] px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition"
+                      >
+                        <Film className="w-3 h-3" />
+                        <span>Media Files</span>
+                      </button>
+                      <label className="cursor-pointer text-[10px] bg-[#787C68] hover:bg-[#868B74] text-[#232A23] px-3 py-1 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1 transition shadow-sm">
+                        <Upload className="w-3 h-3" />
+                        <span>{uploadingFeatured ? 'Uploading...' : 'Upload Image'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={uploadingFeatured}
+                          onChange={handleUploadFeaturedImage}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
                   </div>
 
                   {roomModal.room.featured_image && (
@@ -3591,7 +3606,7 @@ export default function AdminDashboard() {
                   <input
                     type="text"
                     required
-                    placeholder="Enter image URL or click 'Upload Image File' above"
+                    placeholder="Enter image URL or select from Media Files"
                     value={roomModal.room.featured_image || ''}
                     onChange={(e) => setRoomModal({ ...roomModal, room: { ...roomModal.room, featured_image: e.target.value } })}
                     className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8]"
@@ -3604,18 +3619,31 @@ export default function AdminDashboard() {
                     <label className="text-[10px] text-[#A8AD94] uppercase font-bold block">
                       Gallery of Room ({Array.isArray(roomModal.room.images) ? roomModal.room.images.length : (roomModal.room.images ? 1 : 0)} Photos)
                     </label>
-                    <label className="cursor-pointer text-[10px] bg-white/10 hover:bg-white/20 text-[#EAEBE8] px-3 py-1 rounded-lg font-bold flex items-center gap-1 transition">
-                      <Plus className="w-3 h-3 text-[#E3B94E]" />
-                      <span>{uploadingGallery ? 'Uploading...' : 'Upload Gallery Photos'}</span>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        disabled={uploadingGallery}
-                        onChange={handleUploadGalleryImages}
-                        className="hidden"
-                      />
-                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          loadMediaLibrary();
+                          setMediaPickerForRoomGallery(true);
+                        }}
+                        className="text-[10px] bg-[#E3B94E]/20 hover:bg-[#E3B94E] text-[#E3B94E] hover:text-[#232A23] px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition"
+                      >
+                        <Film className="w-3 h-3" />
+                        <span>Media Files</span>
+                      </button>
+                      <label className="cursor-pointer text-[10px] bg-white/10 hover:bg-white/20 text-[#EAEBE8] px-3 py-1 rounded-lg font-bold flex items-center gap-1 transition">
+                        <Plus className="w-3 h-3 text-[#E3B94E]" />
+                        <span>{uploadingGallery ? 'Uploading...' : 'Upload Photos'}</span>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          disabled={uploadingGallery}
+                          onChange={handleUploadGalleryImages}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
                   </div>
 
                   {/* Thumbnails grid */}
@@ -5403,6 +5431,115 @@ export default function AdminDashboard() {
                           preview: item.url,
                         }));
                         setMediaPickerForTeam(false);
+                      }}
+                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                    >
+                      <div className="aspect-square bg-black/40 overflow-hidden relative">
+                        <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
+                          {item.size}
+                        </span>
+                      </div>
+                      <div className="p-2">
+                        <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: PICK MEDIA FOR ROOM FEATURED ================= */}
+        {mediaPickerForRoomFeatured && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-4xl w-full p-6 rounded-3xl border border-white/20 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <BedDouble className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    Select Featured Image for Room
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setMediaPickerForRoomFeatured(false)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {mediaLibraryList
+                  .filter((item) => item.type === 'image')
+                  .map((item) => (
+                    <button
+                      key={item.url}
+                      type="button"
+                      onClick={() => {
+                        setRoomModal((prev) => ({
+                          ...prev,
+                          room: { ...prev.room, featured_image: item.url },
+                        }));
+                        setMediaPickerForRoomFeatured(false);
+                      }}
+                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                    >
+                      <div className="aspect-square bg-black/40 overflow-hidden relative">
+                        <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
+                          {item.size}
+                        </span>
+                      </div>
+                      <div className="p-2">
+                        <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: PICK MEDIA FOR ROOM GALLERY ================= */}
+        {mediaPickerForRoomGallery && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-4xl w-full p-6 rounded-3xl border border-white/20 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Image className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    Select Photo to Add to Room Gallery
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setMediaPickerForRoomGallery(false)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {mediaLibraryList
+                  .filter((item) => item.type === 'image')
+                  .map((item) => (
+                    <button
+                      key={item.url}
+                      type="button"
+                      onClick={() => {
+                        setRoomModal((prev) => {
+                          const existing = Array.isArray(prev.room.images)
+                            ? prev.room.images
+                            : typeof prev.room.images === 'string'
+                            ? prev.room.images.split(',').map((s) => s.trim()).filter(Boolean)
+                            : [];
+                          return {
+                            ...prev,
+                            room: { ...prev.room, images: [...existing, item.url] },
+                          };
+                        });
+                        setMediaPickerForRoomGallery(false);
                       }}
                       className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
                     >

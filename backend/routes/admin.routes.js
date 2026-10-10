@@ -165,7 +165,36 @@ router.post('/bookings/:id/status', async (req, res) => {
 
     res.json({ success: true, message: `Reservation #${b.booking_number} updated to ${newStatus}.` });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to update status.' });
+    console.error('Update booking status error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update status: ' + err.message });
+  }
+});
+
+router.delete('/bookings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM booking_add_ons WHERE booking_id = ?', [id]);
+    await query('DELETE FROM reviews WHERE booking_id = ?', [id]);
+    await query('DELETE FROM bookings WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Reservation deleted successfully.' });
+  } catch (err) {
+    console.error('Admin delete booking error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete reservation: ' + err.message });
+  }
+});
+
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (req.user && req.user.id === parseInt(id, 10)) {
+      return res.status(400).json({ success: false, message: 'You cannot delete your own admin account.' });
+    }
+    await query('UPDATE bookings SET user_id = NULL WHERE user_id = ?', [id]);
+    await query('DELETE FROM users WHERE id = ?', [id]);
+    res.json({ success: true, message: 'User deleted successfully.' });
+  } catch (err) {
+    console.error('Admin delete user error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete user: ' + err.message });
   }
 });
 
@@ -253,11 +282,68 @@ router.put('/rooms/:id', async (req, res) => {
 router.delete('/rooms/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Check if room exists
+    const rooms = await query('SELECT * FROM rooms WHERE id = ?', [id]);
+    if (!rooms || rooms.length === 0) {
+      return res.status(404).json({ success: false, message: 'Room not found.' });
+    }
+    const room = rooms[0];
+
+    // 1. Delete reviews referencing this room
+    await query('DELETE FROM reviews WHERE room_id = ?', [id]);
+
+    // 2. Delete seasonal prices for this room
     await query('DELETE FROM room_seasonal_prices WHERE room_id = ?', [id]);
+
+    // 3. Find all bookings referencing this room and remove them safely
+    const bookings = await query('SELECT id FROM bookings WHERE room_id = ?', [id]);
+    if (bookings && bookings.length > 0) {
+      const bookingIds = bookings.map(b => b.id);
+      for (const bId of bookingIds) {
+        await query('DELETE FROM booking_add_ons WHERE booking_id = ?', [bId]);
+        await query('DELETE FROM reviews WHERE booking_id = ?', [bId]);
+      }
+      await query('DELETE FROM bookings WHERE room_id = ?', [id]);
+    }
+
+    // 4. Finally delete the room itself
     await query('DELETE FROM rooms WHERE id = ?', [id]);
-    res.json({ success: true, message: 'Room deleted successfully.' });
+
+    res.json({ success: true, message: `Room "${room.title}" deleted successfully.` });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to delete room.' });
+    console.error('Delete room error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete room: ' + err.message });
+  }
+});
+
+// Seasonal Pricing Management for Rooms
+router.post('/rooms/:id/seasonal-prices', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { season_name, start_date, end_date, price_per_night } = req.body;
+    if (!season_name || !start_date || !end_date || !price_per_night) {
+      return res.status(422).json({ success: false, message: 'All seasonal price fields are required.' });
+    }
+    await query(
+      'INSERT INTO room_seasonal_prices (room_id, season_name, start_date, end_date, price_per_night) VALUES (?, ?, ?, ?, ?)',
+      [id, season_name.trim(), start_date, end_date, parseFloat(price_per_night)]
+    );
+    res.json({ success: true, message: 'Seasonal price rate added successfully.' });
+  } catch (err) {
+    console.error('Add seasonal price error:', err);
+    res.status(500).json({ success: false, message: 'Failed to add seasonal price: ' + err.message });
+  }
+});
+
+router.delete('/rooms/:id/seasonal-prices/:priceId', async (req, res) => {
+  try {
+    const { id, priceId } = req.params;
+    await query('DELETE FROM room_seasonal_prices WHERE id = ? AND room_id = ?', [priceId, id]);
+    res.json({ success: true, message: 'Seasonal rate deleted successfully.' });
+  } catch (err) {
+    console.error('Delete seasonal price error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete seasonal rate: ' + err.message });
   }
 });
 
@@ -267,7 +353,8 @@ router.post('/rooms/:id/toggle', async (req, res) => {
     await query('UPDATE rooms SET is_active = IF(is_active = 1, 0, 1) WHERE id = ?', [id]);
     res.json({ success: true, message: 'Room status toggled.' });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to toggle status.' });
+    console.error('Toggle room status error:', err);
+    res.status(500).json({ success: false, message: 'Failed to toggle status: ' + err.message });
   }
 });
 
@@ -813,6 +900,17 @@ router.put('/experiences/:id', async (req, res) => {
     res.json({ success: true, message: 'Experience updated successfully.' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to update experience: ' + err.message });
+  }
+});
+
+router.delete('/experiences/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM experiences WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Experience deleted successfully.' });
+  } catch (err) {
+    console.error('Delete experience error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete experience: ' + err.message });
   }
 });
 
