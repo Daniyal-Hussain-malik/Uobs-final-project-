@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Lock, Mail, Sparkles, Key, AlertCircle } from 'lucide-react';
+import { Lock, Mail, Sparkles, AlertCircle } from 'lucide-react';
 
 export default function AuthLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, quickLogin } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -24,18 +24,6 @@ export default function AuthLogin() {
       setError(err.message || 'Login failed.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleQuick = async (role) => {
-    setError('');
-    try {
-      await quickLogin(role);
-      if (role === 'admin') navigate('/admin');
-      else if (role === 'reception') navigate('/reception');
-      else navigate('/guest');
-    } catch (err) {
-      setError(err.message);
     }
   };
 
@@ -57,33 +45,6 @@ export default function AuthLogin() {
         </div>
       )}
 
-      {/* Quick 1-Click Role Switcher */}
-      <div className="bg-[#232A23] border border-white/10 p-4 rounded-2xl space-y-2 text-xs">
-        <p className="text-[11px] font-bold text-[#E3B94E] flex items-center gap-1.5 uppercase tracking-wider">
-          <Key className="w-3.5 h-3.5" /> Instant Demo Sign-In
-        </p>
-        <div className="grid grid-cols-3 gap-2 pt-1">
-          <button
-            onClick={() => handleQuick('admin')}
-            className="p-2 rounded-xl bg-white/5 hover:bg-[#787C68] text-[#EAEBE8] hover:text-[#232A23] font-semibold transition text-center"
-          >
-            Admin
-          </button>
-          <button
-            onClick={() => handleQuick('reception')}
-            className="p-2 rounded-xl bg-white/5 hover:bg-[#787C68] text-[#EAEBE8] hover:text-[#232A23] font-semibold transition text-center"
-          >
-            Reception
-          </button>
-          <button
-            onClick={() => handleQuick('guest')}
-            className="p-2 rounded-xl bg-white/5 hover:bg-[#787C68] text-[#EAEBE8] hover:text-[#232A23] font-semibold transition text-center"
-          >
-            Guest
-          </button>
-        </div>
-      </div>
-
       <div className="bg-[#232A23] border border-white/10 p-6 sm:p-8 rounded-2xl space-y-5 shadow-2xl">
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
@@ -95,7 +56,7 @@ export default function AuthLogin() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="oasisresortskardu@gmail.com"
+                placeholder="e.g. admin@oasisresort.pk"
                 className="w-full bg-black/30 border border-white/15 rounded-xl pl-9 pr-3 py-2.5 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
               />
             </div>
@@ -110,7 +71,7 @@ export default function AuthLogin() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Admin@123"
+                placeholder="Enter your password"
                 className="w-full bg-black/30 border border-white/15 rounded-xl pl-9 pr-3 py-2.5 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
               />
             </div>
