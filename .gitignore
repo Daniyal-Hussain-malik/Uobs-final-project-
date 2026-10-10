@@ -21,8 +21,10 @@ backend/public/uploads/
 frontend/dist/uploads/
 
 
-# Large local html archives
+# Large local html archives & zip archives
 frontend/oasis-resort-v2.html
+*.zip
+backend/uploads/rooms/IMG_0154.MOV
 
 # Logs
 logs/

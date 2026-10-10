@@ -1107,5 +1107,416 @@ router.delete('/gallery/:id', async (req, res) => {
   }
 });
 
+// ==========================================
+// 13. SITE SETTINGS & HERO SECTION (CRUD)
+// ==========================================
+
+router.get('/settings', async (req, res) => {
+  try {
+    const raw = await query('SELECT setting_key, setting_value FROM site_settings');
+    const settings = {};
+    (raw || []).forEach(item => {
+      settings[item.setting_key] = item.setting_value;
+    });
+    res.json({ success: true, settings });
+  } catch (err) {
+    console.error('Admin get settings error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load site settings.' });
+  }
+});
+
+router.put('/settings', async (req, res) => {
+  try {
+    const settingsObj = req.body;
+    if (!settingsObj || typeof settingsObj !== 'object') {
+      return res.status(400).json({ success: false, message: 'Invalid settings payload.' });
+    }
+
+    for (const [key, val] of Object.entries(settingsObj)) {
+      await query(
+        `INSERT INTO site_settings (setting_key, setting_value)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = ?`,
+        [key, String(val ?? ''), String(val ?? '')]
+      );
+    }
+
+    res.json({ success: true, message: 'Site & hero settings saved successfully.' });
+  } catch (err) {
+    console.error('Admin update settings error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update site settings.' });
+  }
+});
+
+// ==========================================
+// 14. RESORT TEAM MEMBERS MANAGEMENT (CRUD)
+// ==========================================
+
+const teamUploadDir = path.join(baseUploadDir, 'team');
+if (!fs.existsSync(teamUploadDir)) fs.mkdirSync(teamUploadDir, { recursive: true });
+
+const teamStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, teamUploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `team-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+  },
+});
+
+const uploadTeamMedia = multer({
+  storage: teamStorage,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  fileFilter: (req, file, cb) => cb(null, true),
+});
+
+router.get('/team', async (req, res) => {
+  try {
+    const team = await query('SELECT * FROM team_members ORDER BY sort_order ASC, id ASC');
+    res.json({ success: true, team });
+  } catch (err) {
+    console.error('Admin team get error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load team members.' });
+  }
+});
+
+router.post('/team', uploadTeamMedia.single('image'), async (req, res) => {
+  try {
+    let { name, role, bio = '', image_url = '', sort_order = 0 } = req.body;
+    if (req.file) {
+      image_url = `/uploads/team/${req.file.filename}`;
+    }
+
+    if (!name || !name.trim()) {
+      return res.status(422).json({ success: false, message: 'Name is required.' });
+    }
+    if (!role || !role.trim()) {
+      return res.status(422).json({ success: false, message: 'Title / Designation is required.' });
+    }
+
+    const result = await query(
+      'INSERT INTO team_members (name, role, bio, image_url, sort_order) VALUES (?, ?, ?, ?, ?)',
+      [name.trim(), role.trim(), (bio || '').trim(), (image_url || '').trim(), parseInt(sort_order, 10) || 0]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Team member added successfully.',
+      member: {
+        id: result.insertId,
+        name: name.trim(),
+        role: role.trim(),
+        bio: (bio || '').trim(),
+        image_url: (image_url || '').trim(),
+        sort_order: parseInt(sort_order, 10) || 0,
+      },
+    });
+  } catch (err) {
+    console.error('Admin create team error:', err);
+    res.status(500).json({ success: false, message: 'Failed to add team member: ' + err.message });
+  }
+});
+
+router.put('/team/:id', uploadTeamMedia.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    let { name, role, bio, image_url, sort_order } = req.body;
+
+    const existing = await query('SELECT * FROM team_members WHERE id = ?', [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Team member not found.' });
+    }
+    const current = existing[0];
+
+    if (req.file) {
+      image_url = `/uploads/team/${req.file.filename}`;
+    } else if (image_url === undefined) {
+      image_url = current.image_url;
+    }
+
+    const updatedName = name !== undefined && name.trim() ? name.trim() : current.name;
+    const updatedRole = role !== undefined && role.trim() ? role.trim() : current.role;
+    const updatedBio = bio !== undefined ? bio.trim() : current.bio;
+    const updatedSort = sort_order !== undefined ? parseInt(sort_order, 10) || 0 : current.sort_order;
+
+    await query(
+      'UPDATE team_members SET name = ?, role = ?, bio = ?, image_url = ?, sort_order = ? WHERE id = ?',
+      [updatedName, updatedRole, updatedBio, image_url, updatedSort, id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Team member updated successfully.',
+      member: {
+        id: parseInt(id, 10),
+        name: updatedName,
+        role: updatedRole,
+        bio: updatedBio,
+        image_url,
+        sort_order: updatedSort,
+      },
+    });
+  } catch (err) {
+    console.error('Admin update team error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update team member: ' + err.message });
+  }
+});
+
+router.delete('/team/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await query('SELECT * FROM team_members WHERE id = ?', [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Team member not found.' });
+    }
+
+    await query('DELETE FROM team_members WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Team member removed successfully.' });
+  } catch (err) {
+    console.error('Admin delete team error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete team member.' });
+  }
+});
+
+// ==========================================
+// 15. MEDIA LIBRARY & FILE MANAGER (IMAGES & VIDEOS)
+// ==========================================
+
+const mediaLibStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const targetFolder = (req.body.folder || req.query.folder || 'rooms').toLowerCase();
+    const safeFolder = ['rooms', 'gallery', 'videos', 'team', 'assets'].includes(targetFolder) ? targetFolder : 'rooms';
+    const dest = path.join(baseUploadDir, safeFolder);
+    if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+    cb(null, dest);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);
+    cb(null, `${base}-${Date.now()}${ext}`);
+  },
+});
+
+const uploadMediaLib = multer({
+  storage: mediaLibStorage,
+  limits: { fileSize: 300 * 1024 * 1024 }, // 300MB for 4K video clips & high-res RAW/DJI photos
+  fileFilter: (req, file, cb) => cb(null, true),
+});
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+router.get('/media-library', async (req, res) => {
+  try {
+    const foldersToScan = ['rooms', 'gallery', 'videos', 'team', 'assets'];
+    const filesList = [];
+
+    // Fetch existing gallery records and site settings
+    const galleryItems = await query('SELECT image_url, title, category FROM media_gallery');
+    const galleryUrlMap = new Map();
+    (galleryItems || []).forEach(g => galleryUrlMap.set(g.image_url, g));
+
+    const rawSettings = await query("SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('hero_image_url', 'hero_video_url')");
+    let heroImgUrl = '';
+    let heroVidUrl = '';
+    (rawSettings || []).forEach(s => {
+      if (s.setting_key === 'hero_image_url') heroImgUrl = s.setting_value;
+      if (s.setting_key === 'hero_video_url') heroVidUrl = s.setting_value;
+    });
+
+    const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.avif', '.jfif', '.bmp', '.dng', '.tiff']);
+    const videoExtensions = new Set(['.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.3gp']);
+
+    for (const folder of foldersToScan) {
+      const dirPath = path.join(baseUploadDir, folder);
+      if (fs.existsSync(dirPath)) {
+        try {
+          const files = fs.readdirSync(dirPath);
+          for (const filename of files) {
+            const filePath = path.join(dirPath, filename);
+            try {
+              const stat = fs.statSync(filePath);
+              if (stat.isFile()) {
+                const ext = path.extname(filename).toLowerCase();
+                const isVideo = videoExtensions.has(ext);
+                const isImage = imageExtensions.has(ext);
+                const webUrl = `/uploads/${folder}/${filename}`;
+
+                filesList.push({
+                  name: filename,
+                  url: webUrl,
+                  folder: folder,
+                  size_bytes: stat.size,
+                  size: formatFileSize(stat.size),
+                  type: isVideo ? 'video' : (isImage ? 'image' : 'file'),
+                  extension: ext.replace('.', '').toUpperCase(),
+                  created_at: stat.mtime.toISOString(),
+                  in_gallery: galleryUrlMap.has(webUrl),
+                  gallery_info: galleryUrlMap.get(webUrl) || null,
+                  is_hero_image: heroImgUrl === webUrl,
+                  is_hero_video: heroVidUrl === webUrl,
+                });
+              }
+            } catch (statErr) {
+              // ignore single file stat errors
+            }
+          }
+        } catch (dirErr) {
+          // ignore directory read errors
+        }
+      }
+    }
+
+    // Sort newest first
+    filesList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    res.json({
+      success: true,
+      total: filesList.length,
+      media: filesList,
+      hero_current: {
+        image: heroImgUrl,
+        video: heroVidUrl,
+      },
+    });
+  } catch (err) {
+    console.error('Admin media library error:', err);
+    res.status(500).json({ success: false, message: 'Failed to scan media library: ' + err.message });
+  }
+});
+
+router.post('/media-library/upload', uploadMediaLib.array('files', 20), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'No media files were received.' });
+    }
+
+    const uploaded = req.files.map(file => {
+      const folder = path.basename(path.dirname(file.path));
+      return {
+        name: file.filename,
+        original_name: file.originalname,
+        url: `/uploads/${folder}/${file.filename}`,
+        size_bytes: file.size,
+        size: formatFileSize(file.size),
+        folder: folder,
+      };
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `${uploaded.length} file(s) uploaded successfully!`,
+      files: uploaded,
+      url: uploaded[0].url,
+    });
+  } catch (err) {
+    console.error('Media upload error:', err);
+    res.status(500).json({ success: false, message: 'Upload failed: ' + err.message });
+  }
+});
+
+router.post('/media-library/add-to-gallery', async (req, res) => {
+  try {
+    const { media_url, title = 'Resort Photography', category = 'Resort Grounds', is_featured = 1, sort_order = 0 } = req.body;
+    if (!media_url) {
+      return res.status(422).json({ success: false, message: 'Media URL is required.' });
+    }
+
+    // Check if category exists or create it
+    let cat = (category || 'Resort Grounds').trim();
+    const existingCat = await query('SELECT name FROM gallery_categories WHERE name = ?', [cat]);
+    if (existingCat.length === 0) {
+      const slug = cat.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      await query('INSERT IGNORE INTO gallery_categories (name, slug) VALUES (?, ?)', [cat, slug]);
+    }
+
+    const result = await query(
+      'INSERT INTO media_gallery (title, category, image_url, is_featured, sort_order) VALUES (?, ?, ?, ?, ?)',
+      [title.trim(), cat, media_url.trim(), is_featured ? 1 : 0, parseInt(sort_order, 10) || 0]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Media added to Resort Gallery!',
+      id: result.insertId,
+    });
+  } catch (err) {
+    console.error('Add to gallery error:', err);
+    res.status(500).json({ success: false, message: 'Failed to add media to gallery: ' + err.message });
+  }
+});
+
+router.post('/media-library/set-hero', async (req, res) => {
+  try {
+    const { media_url, media_type = 'image' } = req.body;
+    if (!media_url) {
+      return res.status(422).json({ success: false, message: 'Media URL is required.' });
+    }
+
+    if (media_type === 'video') {
+      await query(
+        `INSERT INTO site_settings (setting_key, setting_value) VALUES ('hero_video_url', ?), ('hero_media_type', 'video')
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [media_url]
+      );
+      await query("UPDATE site_settings SET setting_value = 'video' WHERE setting_key = 'hero_media_type'");
+    } else {
+      await query(
+        `INSERT INTO site_settings (setting_key, setting_value) VALUES ('hero_image_url', ?), ('hero_media_type', 'image')
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [media_url]
+      );
+      await query("UPDATE site_settings SET setting_value = 'image' WHERE setting_key = 'hero_media_type'");
+    }
+
+    res.json({
+      success: true,
+      message: `Set as active Hero ${media_type === 'video' ? 'Video' : 'Image'} successfully!`,
+      media_url,
+      media_type,
+    });
+  } catch (err) {
+    console.error('Set hero error:', err);
+    res.status(500).json({ success: false, message: 'Failed to set hero media: ' + err.message });
+  }
+});
+
+router.delete('/media-library/file', async (req, res) => {
+  try {
+    const file_path = req.body?.file_path || req.query?.file_path;
+    if (!file_path || !file_path.startsWith('/uploads/')) {
+      return res.status(400).json({ success: false, message: 'Invalid file path.' });
+    }
+
+    const relPath = file_path.replace(/^\/?uploads\//, '');
+    const absolutePath = path.resolve(baseUploadDir, relPath);
+
+    // Security check: ensure path is inside baseUploadDir
+    if (!absolutePath.startsWith(path.resolve(baseUploadDir))) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+
+    if (fs.existsSync(absolutePath)) {
+      try {
+        fs.unlinkSync(absolutePath);
+      } catch (e) {
+        return res.status(500).json({ success: false, message: 'Failed to delete file from disk: ' + e.message });
+      }
+    }
+
+    // Also remove from media_gallery if present
+    await query('DELETE FROM media_gallery WHERE image_url = ?', [file_path]);
+
+    res.json({ success: true, message: 'File deleted successfully.' });
+  } catch (err) {
+    console.error('Delete media library file error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete file: ' + err.message });
+  }
+});
+
 module.exports = router;
 

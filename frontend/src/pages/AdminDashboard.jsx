@@ -7,7 +7,8 @@ import {
   Shield, Check, Trash2, Plus, Sparkles, AlertCircle,
   ToggleLeft, ToggleRight, Search, Edit3, X, Eye, Tag,
   ExternalLink, BedDouble, CheckCircle, FileText,
-  Upload, Image, Utensils, Compass, Layers, CreditCard, Building, Printer, RefreshCw
+  Upload, Image, Utensils, Compass, Layers, CreditCard, Building, Printer, RefreshCw,
+  Film, Play, Video, Folder, Copy, CheckCircle2, Maximize2, Sliders, UserCheck, Briefcase
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -50,6 +51,42 @@ export default function AdminDashboard() {
   const [replaceImageModal, setReplaceImageModal] = useState(null); // null | { image: {}, file: null, preview: '', url: '' }
   const [uploadingGalleryItem, setUploadingGalleryItem] = useState(false);
   const [serviceInvoiceModalData, setServiceInvoiceModalData] = useState(null);
+
+  // Media Library States
+  const [mediaLibraryList, setMediaLibraryList] = useState([]);
+  const [loadingMediaLib, setLoadingMediaLib] = useState(false);
+  const [mediaTypeFilter, setMediaTypeFilter] = useState('all');
+  const [mediaFolderFilter, setMediaFolderFilter] = useState('all');
+  const [mediaSearchTerm, setMediaSearchTerm] = useState('');
+  const [uploadMediaModalOpen, setUploadMediaModalOpen] = useState(false);
+  const [uploadMediaTargetFolder, setUploadMediaTargetFolder] = useState('rooms');
+  const [uploadMediaFiles, setUploadMediaFiles] = useState([]);
+  const [uploadingMediaLibFiles, setUploadingMediaLibFiles] = useState(false);
+  const [mediaPreviewModal, setMediaPreviewModal] = useState(null);
+  const [addToGalleryModal, setAddToGalleryModal] = useState(null);
+
+  // Hero Section Settings States
+  const [heroSettings, setHeroSettings] = useState({
+    hero_media_type: 'image',
+    hero_image_url: '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG',
+    hero_video_url: '/uploads/rooms/fbac89b9f17e4ef5939dde3f37a7110d.MOV',
+    hero_badge: 'Katpana Cold Desert, Skardu • 2,228M',
+    hero_title: 'Experience Nature in Luxury',
+    hero_subtitle: 'Katpana Cold Desert, Skardu — Where the serene Karakoram peaks meet unparalleled Balti warmth and modern five-star comfort.',
+    hero_cta_text: 'Explore Luxury Stays',
+    hero_cta_link: '/rooms',
+    hero_video_button_text: 'Watch Resort Tour',
+  });
+  const [savingHeroSettings, setSavingHeroSettings] = useState(false);
+  const [selectHeroMediaPicker, setSelectHeroMediaPicker] = useState(null);
+
+  // Team Management States
+  const [teamMembersList, setTeamMembersList] = useState([]);
+  const [loadingTeam, setLoadingTeam] = useState(false);
+  const [teamModal, setTeamModal] = useState(null);
+  const [savingTeamMember, setSavingTeamMember] = useState(false);
+  const [mediaPickerForTeam, setMediaPickerForTeam] = useState(false);
+  const [mediaPickerForGallery, setMediaPickerForGallery] = useState(false);
 
   // Uploading state
   const [uploadingFeatured, setUploadingFeatured] = useState(false);
@@ -193,9 +230,49 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadMediaLibrary = async () => {
+    setLoadingMediaLib(true);
+    try {
+      const res = await api.get('/admin/media-library');
+      if (res.success) {
+        setMediaLibraryList(res.media || []);
+      }
+    } catch (err) {
+      console.error('Failed to load media library:', err);
+    } finally {
+      setLoadingMediaLib(false);
+    }
+  };
+
+  const loadHeroSettings = async () => {
+    try {
+      const res = await api.get('/admin/settings');
+      if (res.success && res.settings) {
+        setHeroSettings(prev => ({ ...prev, ...res.settings }));
+      }
+    } catch (err) {
+      console.error('Failed to load hero settings:', err);
+    }
+  };
+
+  const loadTeamMembers = async () => {
+    setLoadingTeam(true);
+    try {
+      const res = await api.get('/admin/team');
+      if (res.success) {
+        setTeamMembersList(res.team || []);
+      }
+    } catch (err) {
+      console.error('Failed to load team members:', err);
+    } finally {
+      setLoadingTeam(false);
+    }
+  };
+
   useEffect(() => {
     loadDashboard();
     loadCategories();
+    loadHeroSettings();
   }, []);
 
   useEffect(() => {
@@ -204,6 +281,9 @@ export default function AdminDashboard() {
     if (activeTab === 'rooms') { loadRooms(); loadCategories(); }
     if (activeTab === 'categories') loadCategories();
     if (activeTab === 'gallery_mgmt') { loadGalleryImages(); loadGalleryCats(); }
+    if (activeTab === 'media_library') { loadMediaLibrary(); loadGalleryCats(); }
+    if (activeTab === 'hero_settings') { loadHeroSettings(); loadMediaLibrary(); }
+    if (activeTab === 'team_mgmt') { loadTeamMembers(); loadMediaLibrary(); }
     if (activeTab === 'payment_accounts') loadPaymentAccounts();
     if (activeTab === 'dining_items') loadDiningItems();
     if (activeTab === 'dining_bookings') loadDiningBookings();
@@ -829,6 +909,147 @@ export default function AdminDashboard() {
     }
   };
 
+  // ================= MEDIA LIBRARY HANDLERS =================
+  const handleUploadMediaLibFiles = async (e) => {
+    e.preventDefault();
+    if (!uploadMediaFiles || uploadMediaFiles.length === 0) {
+      triggerToast('Please select at least one media file to upload.');
+      return;
+    }
+    setUploadingMediaLibFiles(true);
+    try {
+      const fd = new FormData();
+      for (let i = 0; i < uploadMediaFiles.length; i++) {
+        fd.append('files', uploadMediaFiles[i]);
+      }
+      fd.append('folder', uploadMediaTargetFolder);
+      const res = await api.post('/admin/media-library/upload', fd);
+      if (res.success) {
+        triggerToast(res.message);
+        setUploadMediaModalOpen(false);
+        setUploadMediaFiles([]);
+        loadMediaLibrary();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Media upload failed.');
+    } finally {
+      setUploadingMediaLibFiles(false);
+    }
+  };
+
+  const handleSetMediaAsHero = async (mediaItem) => {
+    try {
+      const media_type = mediaItem.type === 'video' ? 'video' : 'image';
+      const res = await api.post('/admin/media-library/set-hero', {
+        media_url: mediaItem.url,
+        media_type,
+      });
+      if (res.success) {
+        triggerToast(res.message);
+        loadMediaLibrary();
+        loadHeroSettings();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to set hero media.');
+    }
+  };
+
+  const handleConfirmAddToGallery = async (e) => {
+    e.preventDefault();
+    if (!addToGalleryModal) return;
+    try {
+      const res = await api.post('/admin/media-library/add-to-gallery', addToGalleryModal);
+      if (res.success) {
+        triggerToast(res.message);
+        setAddToGalleryModal(null);
+        loadMediaLibrary();
+        loadGalleryImages();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to add media to gallery.');
+    }
+  };
+
+  const handleDeleteMediaFile = async (mediaItem) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${mediaItem.name}"? This file will be removed from disk.`)) return;
+    try {
+      const res = await api.delete('/admin/media-library/file', {
+        file_path: mediaItem.url,
+      });
+      if (res.success) {
+        triggerToast(res.message);
+        loadMediaLibrary();
+        loadGalleryImages();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to delete file.');
+    }
+  };
+
+  // ================= HERO SETTINGS HANDLERS =================
+  const handleSaveHeroSettings = async (e) => {
+    e.preventDefault();
+    setSavingHeroSettings(true);
+    try {
+      const res = await api.put('/admin/settings', heroSettings);
+      if (res.success) {
+        triggerToast(res.message);
+        loadHeroSettings();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to save hero settings.');
+    } finally {
+      setSavingHeroSettings(false);
+    }
+  };
+
+  // ================= TEAM MANAGEMENT HANDLERS =================
+  const handleSaveTeamMember = async (e) => {
+    e.preventDefault();
+    if (!teamModal) return;
+    setSavingTeamMember(true);
+    try {
+      const fd = new FormData();
+      fd.append('name', teamModal.member.name || '');
+      fd.append('role', teamModal.member.role || '');
+      fd.append('bio', teamModal.member.bio || '');
+      fd.append('sort_order', teamModal.member.sort_order || 0);
+      if (teamModal.file) {
+        fd.append('image', teamModal.file);
+      } else if (teamModal.member.image_url) {
+        fd.append('image_url', teamModal.member.image_url);
+      }
+      let res;
+      if (teamModal.mode === 'add') {
+        res = await api.post('/admin/team', fd);
+      } else {
+        res = await api.put(`/admin/team/${teamModal.member.id}`, fd);
+      }
+      if (res.success) {
+        triggerToast(res.message);
+        setTeamModal(null);
+        loadTeamMembers();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to save team member.');
+    } finally {
+      setSavingTeamMember(false);
+    }
+  };
+
+  const handleDeleteTeamMember = async (id) => {
+    if (!window.confirm('Delete this team member? This cannot be undone.')) return;
+    try {
+      const res = await api.delete(`/admin/team/${id}`);
+      if (res.success) {
+        triggerToast(res.message);
+        loadTeamMembers();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to delete team member.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#2C332C] flex items-center justify-center text-[#A8AD94]">
@@ -874,8 +1095,11 @@ export default function AdminDashboard() {
               { id: 'overview', label: 'Overview' },
               { id: 'bookings', label: 'Room Stays' },
               { id: 'rooms', label: 'Rooms & Suites' },
-              { id: 'categories', label: 'Categories' },
+              { id: 'media_library', label: 'Media Files' },
+              { id: 'hero_settings', label: 'Hero Section' },
+              { id: 'team_mgmt', label: 'Resort Team' },
               { id: 'gallery_mgmt', label: 'Gallery & Media' },
+              { id: 'categories', label: 'Categories' },
               { id: 'payment_accounts', label: 'Payment Accounts' },
               { id: 'dining_items', label: 'Dining Deals & Menus' },
               { id: 'dining_bookings', label: 'Dining Bookings' },
@@ -1574,6 +1798,633 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ================= TAB: MEDIA FILES & REELS (IMAGES & VIDEOS) ================= */}
+        {activeTab === 'media_library' && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Header & Main Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Film className="w-5 h-5 text-[#E3B94E]" />
+                  <h2 className="font-display text-2xl font-bold text-[#EAEBE8]">
+                    Resort Media Files &amp; Storage
+                  </h2>
+                </div>
+                <p className="text-xs text-[#A8AD94] mt-0.5">
+                  Browse and organize all images and videos from <code>backend/uploads/rooms</code> and all resort media directories.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={loadMediaLibrary}
+                  className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[#A8AD94] hover:text-[#EAEBE8] text-xs font-semibold flex items-center gap-1.5 transition border border-white/10"
+                  title="Refresh media files"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingMediaLib ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUploadMediaTargetFolder('rooms');
+                    setUploadMediaFiles([]);
+                    setUploadMediaModalOpen(true);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition shadow-lg shrink-0"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Upload Images &amp; Videos</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="bg-[#232A23] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Type Filters */}
+                <span className="text-[10px] text-[#A8AD94] uppercase tracking-wider font-bold mr-1">Type:</span>
+                {[
+                  { id: 'all', label: `All (${mediaLibraryList.length})` },
+                  { id: 'image', label: `Images (${mediaLibraryList.filter(f => f.type === 'image').length})` },
+                  { id: 'video', label: `Videos (${mediaLibraryList.filter(f => f.type === 'video').length})` },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setMediaTypeFilter(f.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                      mediaTypeFilter === f.id
+                        ? 'bg-[#E3B94E] text-[#232A23] font-bold shadow-md'
+                        : 'bg-white/5 text-[#A8AD94] hover:text-[#EAEBE8]'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+
+                <span className="text-[10px] text-[#A8AD94] uppercase tracking-wider font-bold ml-3 mr-1">Folder:</span>
+                {['all', 'rooms', 'gallery', 'videos', 'team'].map((folder) => (
+                  <button
+                    key={folder}
+                    onClick={() => setMediaFolderFilter(folder)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium capitalize transition ${
+                      mediaFolderFilter === folder
+                        ? 'bg-[#787C68] text-[#232A23] font-bold'
+                        : 'bg-white/5 text-[#A8AD94] hover:text-[#EAEBE8]'
+                    }`}
+                  >
+                    {folder === 'all' ? 'All Folders' : folder}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search */}
+              <div className="relative w-full md:w-64">
+                <Search className="w-4 h-4 text-[#A8AD94] absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search filename..."
+                  value={mediaSearchTerm}
+                  onChange={(e) => setMediaSearchTerm(e.target.value)}
+                  className="w-full bg-[#1E241E] border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Media Grid */}
+            {loadingMediaLib ? (
+              <div className="text-center py-24 text-[#A8AD94] space-y-2">
+                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#E3B94E]" />
+                <p className="text-xs">Scanning uploads directory for images and 4K video clips...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {mediaLibraryList
+                  .filter((item) => {
+                    if (mediaTypeFilter !== 'all' && item.type !== mediaTypeFilter) return false;
+                    if (mediaFolderFilter !== 'all' && item.folder !== mediaFolderFilter) return false;
+                    if (mediaSearchTerm && !item.name.toLowerCase().includes(mediaSearchTerm.toLowerCase())) return false;
+                    return true;
+                  })
+                  .map((item) => (
+                    <div
+                      key={item.url}
+                      className="group bg-[#232A23] border border-white/10 hover:border-[#787C68] rounded-2xl overflow-hidden shadow-xl flex flex-col justify-between transition-all duration-200"
+                    >
+                      {/* Thumbnail or Video Preview */}
+                      <div className="relative aspect-square bg-black/60 overflow-hidden flex items-center justify-center">
+                        {item.type === 'video' ? (
+                          <div className="relative w-full h-full flex items-center justify-center bg-[#151915]">
+                            <video
+                              src={item.url}
+                              className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition"
+                              muted
+                              preload="metadata"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
+                            <div className="w-10 h-10 rounded-full bg-black/60 text-[#E3B94E] flex items-center justify-center border border-white/20 shadow-lg pointer-events-none group-hover:scale-110 transition">
+                              <Play className="w-4 h-4 fill-current ml-0.5" />
+                            </div>
+                          </div>
+                        ) : (
+                          <img
+                            src={item.url}
+                            alt={item.name}
+                            loading="lazy"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
+
+                        {/* Top Badges */}
+                        <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
+                            item.type === 'video'
+                              ? 'bg-rose-500/80 text-white border border-rose-400/40 backdrop-blur-sm'
+                              : 'bg-black/70 text-[#EAEBE8] border border-white/20 backdrop-blur-sm'
+                          }`}>
+                            {item.extension || item.type}
+                          </span>
+                          {item.is_hero_image && (
+                            <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-[#E3B94E] text-[#232A23] shadow-md">
+                              HERO IMAGE
+                            </span>
+                          )}
+                          {item.is_hero_video && (
+                            <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-[#E3B94E] text-[#232A23] shadow-md">
+                              HERO VIDEO
+                            </span>
+                          )}
+                          {item.in_gallery && (
+                            <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-500/80 text-white shadow-md">
+                              IN GALLERY
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Size badge */}
+                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md text-[9px] font-mono bg-black/70 text-[#A8AD94] border border-white/10 backdrop-blur-sm">
+                          {item.size}
+                        </span>
+
+                        {/* Quick View Button on Hover */}
+                        <button
+                          type="button"
+                          onClick={() => setMediaPreviewModal(item)}
+                          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white"
+                          title="Preview full size"
+                        >
+                          <Maximize2 className="w-6 h-6 drop-shadow-lg" />
+                        </button>
+                      </div>
+
+                      {/* Card Info & Actions */}
+                      <div className="p-3 space-y-2.5">
+                        <div>
+                          <p className="text-[11px] font-semibold text-[#EAEBE8] truncate" title={item.name}>
+                            {item.name}
+                          </p>
+                          <p className="text-[10px] text-[#A8AD94]">
+                            folder: <code className="text-[#E3B94E]">{item.folder}</code>
+                          </p>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-1">
+                          {/* Set as Hero button */}
+                          <button
+                            type="button"
+                            onClick={() => handleSetMediaAsHero(item)}
+                            className="px-2 py-1 rounded-lg bg-white/5 hover:bg-[#E3B94E] hover:text-[#232A23] text-[#E3B94E] text-[10px] font-bold transition flex items-center gap-1"
+                            title={`Set as active Hero ${item.type === 'video' ? 'Video' : 'Image'}`}
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>Set Hero</span>
+                          </button>
+
+                          {/* Add to Gallery button */}
+                          {item.type === 'image' && !item.in_gallery && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAddToGalleryModal({
+                                  media_url: item.url,
+                                  title: item.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' '),
+                                  category: galleryCatsList[0]?.name || 'Resort Grounds',
+                                  is_featured: 1,
+                                  sort_order: galleryImagesList.length + 1,
+                                })
+                              }
+                              className="px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500 hover:text-white text-emerald-400 text-[10px] font-bold transition flex items-center gap-1"
+                              title="Add this image to Resort Gallery"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Gallery</span>
+                            </button>
+                          )}
+
+                          {/* Copy URL button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(item.url);
+                              triggerToast(`Copied ${item.url} to clipboard!`);
+                            }}
+                            className="p-1 rounded-lg text-[#A8AD94] hover:text-[#EAEBE8] hover:bg-white/10 transition"
+                            title="Copy file URL"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Delete File button */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMediaFile(item)}
+                            className="p-1 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition"
+                            title="Delete file permanently"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {!loadingMediaLib && mediaLibraryList.length === 0 && (
+              <div className="bg-[#232A23] border border-white/10 rounded-3xl p-12 text-center space-y-4">
+                <Film className="w-12 h-12 text-[#A8AD94] mx-auto opacity-40" />
+                <h3 className="font-display text-xl text-[#EAEBE8]">No Media Files Found</h3>
+                <p className="text-xs text-[#A8AD94] max-w-md mx-auto">
+                  Click "Upload Images &amp; Videos" to upload resort photography or video footage from your mobile or computer.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= TAB: HERO & VISUAL DISPLAY SETTINGS ================= */}
+        {activeTab === 'hero_settings' && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#E3B94E]" />
+                  <h2 className="font-display text-2xl font-bold text-[#EAEBE8]">
+                    Hero Section &amp; Visual Backdrop
+                  </h2>
+                </div>
+                <p className="text-xs text-[#A8AD94] mt-0.5">
+                  Configure whether your website greets guests with high-resolution photography or ambient cinematic video.
+                </p>
+              </div>
+            </div>
+
+            {/* LIVE PREVIEW BANNER */}
+            <div className="relative rounded-3xl overflow-hidden border border-white/20 shadow-2xl bg-black min-h-[320px] flex flex-col justify-center items-center text-center p-8">
+              {/* Backdrop preview */}
+              {heroSettings.hero_media_type === 'video' && heroSettings.hero_video_url ? (
+                <video
+                  src={heroSettings.hero_video_url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  poster={heroSettings.hero_image_url}
+                  className="absolute inset-0 w-full h-full object-cover opacity-70"
+                />
+              ) : (
+                <img
+                  src={heroSettings.hero_image_url || '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG'}
+                  alt="Hero Preview"
+                  className="absolute inset-0 w-full h-full object-cover opacity-70"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-b from-[#2C332C]/80 via-[#2C332C]/50 to-[#2C332C]" />
+
+              <div className="relative z-10 max-w-2xl space-y-4">
+                <span className="inline-block px-4 py-1.5 rounded-full bg-[#232A23]/90 border border-white/20 text-[#A8AD94] text-[11px] font-mono uppercase tracking-widest">
+                  {heroSettings.hero_badge || 'Katpana Cold Desert, Skardu • 2,228M'}
+                </span>
+                <h1 className="font-display text-3xl sm:text-5xl font-bold text-[#EAEBE8] leading-tight">
+                  {heroSettings.hero_title || 'Experience Nature in Luxury'}
+                </h1>
+                <p className="text-xs sm:text-sm text-[#EAEBE8]/80 max-w-xl mx-auto italic font-light">
+                  {heroSettings.hero_subtitle || 'A secluded resort where cold desert dunes embrace Karakoram peaks.'}
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <span className="px-5 py-2 rounded-xl bg-[#787C68] text-[#232A23] font-bold text-xs uppercase tracking-wider shadow-lg">
+                    {heroSettings.hero_cta_text || 'Explore Luxury Stays'}
+                  </span>
+                  {heroSettings.hero_video_url && (
+                    <span className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-xs font-semibold text-[#EAEBE8] flex items-center gap-1.5">
+                      <Play className="w-3.5 h-3.5 fill-current text-[#E3B94E]" />
+                      <span>{heroSettings.hero_video_button_text || 'Watch Resort Tour'}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* FORM CONFIGURATOR */}
+            <form onSubmit={handleSaveHeroSettings} className="bg-[#232A23] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-8 shadow-xl">
+              {/* Media Type Switcher */}
+              <div className="space-y-3">
+                <label className="text-xs text-[#A8AD94] uppercase tracking-wider font-bold block">
+                  Select Active Hero Backdrop Type *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setHeroSettings({ ...heroSettings, hero_media_type: 'image' })}
+                    className={`p-5 rounded-2xl border text-left transition flex items-start gap-4 ${
+                      heroSettings.hero_media_type === 'image'
+                        ? 'bg-[#787C68]/20 border-[#787C68] text-[#EAEBE8] shadow-lg ring-1 ring-[#787C68]'
+                        : 'bg-white/5 border-white/10 text-[#A8AD94] hover:border-white/25'
+                    }`}
+                  >
+                    <Image className={`w-8 h-8 ${heroSettings.hero_media_type === 'image' ? 'text-[#E3B94E]' : 'text-[#A8AD94]'}`} />
+                    <div>
+                      <h4 className="font-display font-bold text-base text-[#EAEBE8]">High-Res Hero Photography</h4>
+                      <p className="text-xs text-[#A8AD94] mt-1 leading-relaxed">
+                        Features the high-altitude Katpana drone shot with smooth ambient Ken Burns motion.
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setHeroSettings({ ...heroSettings, hero_media_type: 'video' })}
+                    className={`p-5 rounded-2xl border text-left transition flex items-start gap-4 ${
+                      heroSettings.hero_media_type === 'video'
+                        ? 'bg-[#787C68]/20 border-[#787C68] text-[#EAEBE8] shadow-lg ring-1 ring-[#787C68]'
+                        : 'bg-white/5 border-white/10 text-[#A8AD94] hover:border-white/25'
+                    }`}
+                  >
+                    <Film className={`w-8 h-8 ${heroSettings.hero_media_type === 'video' ? 'text-[#E3B94E]' : 'text-[#A8AD94]'}`} />
+                    <div>
+                      <h4 className="font-display font-bold text-base text-[#EAEBE8]">Ambient Hero Video Reel</h4>
+                      <p className="text-xs text-[#A8AD94] mt-1 leading-relaxed">
+                        Loops cinematic 4K video reel continuously behind the reservation bar.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Media URLs & Pickers */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/10">
+                {/* Hero Image Setting */}
+                <div className="space-y-3 bg-[#1E241E] p-5 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-[#EAEBE8] font-bold flex items-center gap-2">
+                      <Image className="w-4 h-4 text-[#E3B94E]" />
+                      <span>Hero Photo</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setSelectHeroMediaPicker('hero_image_url')}
+                      className="px-3 py-1 rounded-lg bg-[#E3B94E]/20 hover:bg-[#E3B94E] text-[#E3B94E] hover:text-[#232A23] font-bold text-[11px] transition"
+                    >
+                      Pick from Media Files
+                    </button>
+                  </div>
+
+                  {heroSettings.hero_image_url && (
+                    <div className="aspect-[16/9] rounded-xl overflow-hidden bg-black/50 border border-white/15">
+                      <img src={heroSettings.hero_image_url} alt="Current hero" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+
+                  <input
+                    type="text"
+                    value={heroSettings.hero_image_url || ''}
+                    onChange={(e) => setHeroSettings({ ...heroSettings, hero_image_url: e.target.value })}
+                    placeholder="/uploads/rooms/... or image URL"
+                    className="w-full bg-[#151915] border border-white/10 rounded-xl px-3 py-2 text-xs text-[#EAEBE8] font-mono focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+
+                {/* Hero Video Setting */}
+                <div className="space-y-3 bg-[#1E241E] p-5 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-[#EAEBE8] font-bold flex items-center gap-2">
+                      <Film className="w-4 h-4 text-[#E3B94E]" />
+                      <span>Hero Video Reel (MP4 or MOV)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setSelectHeroMediaPicker('hero_video_url')}
+                      className="px-3 py-1 rounded-lg bg-[#E3B94E]/20 hover:bg-[#E3B94E] text-[#E3B94E] hover:text-[#232A23] font-bold text-[11px] transition"
+                    >
+                      Pick from Media Files
+                    </button>
+                  </div>
+
+                  {heroSettings.hero_video_url ? (
+                    <div className="aspect-[16/9] rounded-xl overflow-hidden bg-black/50 border border-white/15">
+                      <video src={heroSettings.hero_video_url} controls className="w-full h-full object-contain" />
+                    </div>
+                  ) : (
+                    <div className="aspect-[16/9] rounded-xl bg-black/30 border border-dashed border-white/10 flex items-center justify-center text-xs text-[#A8AD94]">
+                      No video set yet
+                    </div>
+                  )}
+
+                  <input
+                    type="text"
+                    value={heroSettings.hero_video_url || ''}
+                    onChange={(e) => setHeroSettings({ ...heroSettings, hero_video_url: e.target.value })}
+                    placeholder="/uploads/rooms/fbac89b9f17e4ef5939dde3f37a7110d.MOV or video URL"
+                    className="w-full bg-[#151915] border border-white/10 rounded-xl px-3 py-2 text-xs text-[#EAEBE8] font-mono focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Text & Content Config */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-white/10 text-xs">
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Badge / Altitude Sub-label
+                  </label>
+                  <input
+                    type="text"
+                    value={heroSettings.hero_badge || ''}
+                    onChange={(e) => setHeroSettings({ ...heroSettings, hero_badge: e.target.value })}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Hero Main Headline (H1)
+                  </label>
+                  <input
+                    type="text"
+                    value={heroSettings.hero_title || ''}
+                    onChange={(e) => setHeroSettings({ ...heroSettings, hero_title: e.target.value })}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Hero Subtitle / Description
+                  </label>
+                  <textarea
+                    rows="2"
+                    value={heroSettings.hero_subtitle || ''}
+                    onChange={(e) => setHeroSettings({ ...heroSettings, hero_subtitle: e.target.value })}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    CTA Button Text
+                  </label>
+                  <input
+                    type="text"
+                    value={heroSettings.hero_cta_text || ''}
+                    onChange={(e) => setHeroSettings({ ...heroSettings, hero_cta_text: e.target.value })}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Video Tour Button Text
+                  </label>
+                  <input
+                    type="text"
+                    value={heroSettings.hero_video_button_text || ''}
+                    onChange={(e) => setHeroSettings({ ...heroSettings, hero_video_button_text: e.target.value })}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-white/10">
+                <button
+                  type="submit"
+                  disabled={savingHeroSettings}
+                  className="px-7 py-3 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] font-bold text-xs uppercase tracking-wider transition shadow-lg disabled:opacity-50 flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{savingHeroSettings ? 'Saving Settings...' : 'Save & Publish Hero Settings'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ================= TAB: RESORT TEAM & LEADERSHIP ================= */}
+        {activeTab === 'team_mgmt' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#E3B94E]" />
+                  <h2 className="font-display text-2xl font-bold text-[#EAEBE8]">
+                    Resort Team &amp; Leadership
+                  </h2>
+                </div>
+                <p className="text-xs text-[#A8AD94] mt-0.5">
+                  Update host photos, names, titles, and bios displayed publicly on the About Us page.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setTeamModal({
+                    mode: 'add',
+                    member: {
+                      name: '',
+                      role: 'General Manager',
+                      bio: '',
+                      image_url: '',
+                      sort_order: teamMembersList.length + 1,
+                    },
+                    file: null,
+                    preview: '',
+                  })
+                }
+                className="px-5 py-2.5 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition shadow-lg shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Team Member</span>
+              </button>
+            </div>
+
+            {/* Team Members Grid */}
+            {loadingTeam ? (
+              <div className="text-center py-20 text-[#A8AD94]">Loading team members...</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {teamMembersList.map((m) => (
+                  <div
+                    key={m.id}
+                    className="bg-[#232A23] border border-white/10 rounded-3xl p-6 space-y-4 shadow-xl flex flex-col justify-between"
+                  >
+                    <div className="space-y-4 text-center">
+                      <div className="relative w-28 h-28 mx-auto rounded-full overflow-hidden border-2 border-[#787C68] bg-[#1E241E] shadow-lg">
+                        {m.image_url ? (
+                          <img src={m.image_url} alt={m.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[#A8AD94] font-bold text-xl">
+                            {m.name?.substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <h3 className="font-display text-xl font-bold text-[#EAEBE8]">{m.name}</h3>
+                        <p className="text-xs text-[#E3B94E] font-medium uppercase tracking-wider mt-0.5">{m.role}</p>
+                      </div>
+
+                      <p className="text-xs text-[#A8AD94] font-light leading-relaxed line-clamp-3">
+                        {m.bio || 'No biography written yet.'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs">
+                      <span className="text-[10px] text-[#A8AD94] font-mono">Order: #{m.sort_order}</span>
+                      <div className="space-x-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTeamModal({
+                              mode: 'edit',
+                              member: { ...m },
+                              file: null,
+                              preview: m.image_url || '',
+                            })
+                          }
+                          className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-[#787C68] text-[#EAEBE8] hover:text-[#232A23] transition text-[11px] font-bold"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTeamMember(m.id)}
+                          className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition"
+                          title="Delete team member"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -3666,6 +4517,20 @@ export default function AdminDashboard() {
                         className="flex-1 bg-[#1E241E] border border-white/10 rounded-xl px-3 py-1.5 text-[#EAEBE8] text-xs focus:border-[#787C68] focus:outline-none"
                       />
                     </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[10px] text-[#A8AD94]">Already uploaded in rooms or uploads folder?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          loadMediaLibrary();
+                          setMediaPickerForGallery(true);
+                        }}
+                        className="px-3 py-1 rounded-lg bg-[#E3B94E]/20 hover:bg-[#E3B94E] text-[#E3B94E] hover:text-[#232A23] font-bold text-[10px] transition"
+                      >
+                        Select from Media Files
+                      </button>
+                    </div>
                   </div>
 
                   {/* Active Preview */}
@@ -3928,6 +4793,633 @@ export default function AdminDashboard() {
             onClose={() => setServiceInvoiceModalData(null)}
             booking={serviceInvoiceModalData}
           />
+        )}
+
+        {/* ================= MODAL: UPLOAD MEDIA FILES (IMAGES & VIDEOS) ================= */}
+        {uploadMediaModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-lg w-full p-6 sm:p-7 rounded-3xl border border-white/20 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    Upload Media Files
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setUploadMediaModalOpen(false)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleUploadMediaLibFiles} className="space-y-4 text-xs">
+                {/* Target Folder Selector */}
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Target Folder *
+                  </label>
+                  <select
+                    value={uploadMediaTargetFolder}
+                    onChange={(e) => setUploadMediaTargetFolder(e.target.value)}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  >
+                    <option value="rooms">Rooms Folder (backend/uploads/rooms)</option>
+                    <option value="gallery">Gallery Folder (backend/uploads/gallery)</option>
+                    <option value="videos">Videos Folder (backend/uploads/videos)</option>
+                    <option value="team">Team Folder (backend/uploads/team)</option>
+                    <option value="assets">Assets Folder (backend/uploads/assets)</option>
+                  </select>
+                </div>
+
+                {/* Dropzone / File Selector */}
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Select Images or Videos from Computer/Mobile *
+                  </label>
+                  <label className="border-2 border-dashed border-white/20 hover:border-[#E3B94E] rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition bg-white/5 hover:bg-white/10 group">
+                    <Upload className="w-8 h-8 text-[#A8AD94] group-hover:text-[#E3B94E] mb-2 transition" />
+                    <span className="text-xs font-semibold text-[#EAEBE8]">
+                      Click to choose files or drag &amp; drop
+                    </span>
+                    <span className="text-[10px] text-[#A8AD94] mt-1 text-center">
+                      Supports JPG, PNG, WEBP, HEIC, DNG, MOV, MP4, WebM (up to 300MB)
+                    </span>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,video/*,.mov,.mp4,.webm,.heic,.dng,.jfif"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setUploadMediaFiles(Array.from(e.target.files));
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* Selected Files preview list */}
+                {uploadMediaFiles.length > 0 && (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto bg-[#1E241E] p-3 rounded-xl border border-white/10">
+                    <span className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                      {uploadMediaFiles.length} file(s) selected:
+                    </span>
+                    {uploadMediaFiles.map((f, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-[11px] text-[#EAEBE8] py-1 border-b border-white/5 last:border-0">
+                        <span className="truncate max-w-[280px] font-mono">{f.name}</span>
+                        <span className="text-[#A8AD94] text-[10px]">
+                          {(f.size / (1024 * 1024)).toFixed(2)} MB
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setUploadMediaModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[#A8AD94]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={uploadingMediaLibFiles || uploadMediaFiles.length === 0}
+                    className="px-5 py-2 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] font-bold uppercase tracking-wider transition disabled:opacity-40 flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>{uploadingMediaLibFiles ? 'Uploading files...' : 'Upload Media'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: MEDIA PREVIEW LIGHTBOX ================= */}
+        {mediaPreviewModal && (
+          <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-4xl w-full rounded-3xl border border-white/20 overflow-hidden shadow-2xl animate-fadeIn flex flex-col max-h-[92vh]">
+              <div className="flex justify-between items-center p-4 border-b border-white/10 bg-black/30">
+                <div className="flex items-center gap-2">
+                  {mediaPreviewModal.type === 'video' ? (
+                    <Film className="w-5 h-5 text-[#E3B94E]" />
+                  ) : (
+                    <Image className="w-5 h-5 text-[#E3B94E]" />
+                  )}
+                  <div>
+                    <h3 className="font-display text-sm font-bold text-[#EAEBE8] truncate max-w-lg">
+                      {mediaPreviewModal.name}
+                    </h3>
+                    <p className="text-[10px] text-[#A8AD94]">
+                      {mediaPreviewModal.size} • folder: {mediaPreviewModal.folder}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setMediaPreviewModal(null)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-[#EAEBE8] flex items-center justify-center text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Viewport */}
+              <div className="flex-1 bg-black flex items-center justify-center overflow-hidden min-h-[360px] max-h-[550px]">
+                {mediaPreviewModal.type === 'video' ? (
+                  <video
+                    src={mediaPreviewModal.url}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain max-h-[550px]"
+                  >
+                    Your browser does not support video playback.
+                  </video>
+                ) : (
+                  <img
+                    src={mediaPreviewModal.url}
+                    alt={mediaPreviewModal.name}
+                    className="w-full h-full object-contain max-h-[550px]"
+                  />
+                )}
+              </div>
+
+              {/* Action Toolbar */}
+              <div className="p-4 bg-[#1E241E] border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <span className="text-[11px] font-mono text-[#A8AD94] truncate max-w-md">
+                  {mediaPreviewModal.url}
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(mediaPreviewModal.url);
+                      triggerToast(`Copied ${mediaPreviewModal.url} to clipboard!`);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#EAEBE8] font-semibold text-xs flex items-center gap-1.5 transition"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy URL</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSetMediaAsHero(mediaPreviewModal);
+                      setMediaPreviewModal(null);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#E3B94E] hover:bg-[#c99f36] text-[#232A23] font-bold text-xs flex items-center gap-1.5 transition shadow"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Set as Hero {mediaPreviewModal.type === 'video' ? 'Video' : 'Image'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: CONFIRM ADD TO GALLERY ================= */}
+        {addToGalleryModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-md w-full p-6 sm:p-7 rounded-3xl border border-white/20 space-y-4 shadow-2xl animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <h3 className="font-display text-lg text-[#EAEBE8] font-bold flex items-center gap-2">
+                  <Image className="w-5 h-5 text-[#E3B94E]" />
+                  <span>Add to Resort Gallery</span>
+                </h3>
+                <button
+                  onClick={() => setAddToGalleryModal(null)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleConfirmAddToGallery} className="space-y-4 text-xs">
+                <div className="aspect-[16/10] rounded-2xl overflow-hidden bg-black/40 border border-white/15">
+                  <img src={addToGalleryModal.media_url} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Photo Title / Caption *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={addToGalleryModal.title}
+                    onChange={(e) => setAddToGalleryModal({ ...addToGalleryModal, title: e.target.value })}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Gallery Category *
+                  </label>
+                  <select
+                    value={addToGalleryModal.category}
+                    onChange={(e) => setAddToGalleryModal({ ...addToGalleryModal, category: e.target.value })}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  >
+                    {galleryCatsList.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                    {galleryCatsList.length === 0 && <option value="Resort Grounds">Resort Grounds</option>}
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-[#EAEBE8]">
+                    <input
+                      type="checkbox"
+                      checked={!!addToGalleryModal.is_featured}
+                      onChange={(e) => setAddToGalleryModal({ ...addToGalleryModal, is_featured: e.target.checked ? 1 : 0 })}
+                      className="w-4 h-4 rounded text-[#787C68]"
+                    />
+                    <span>Featured on Home Highlights</span>
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setAddToGalleryModal(null)}
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[#A8AD94]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] font-bold uppercase tracking-wider transition"
+                  >
+                    Add to Gallery
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: SELECT HERO MEDIA PICKER ================= */}
+        {selectHeroMediaPicker && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-4xl w-full p-6 rounded-3xl border border-white/20 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    Choose Media for Hero {selectHeroMediaPicker === 'hero_video_url' ? 'Video Reel' : 'Photo'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setSelectHeroMediaPicker(null)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-xs text-[#A8AD94]">
+                Click any media item below to set it as the active hero source:
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {mediaLibraryList
+                  .filter((item) => {
+                    if (selectHeroMediaPicker === 'hero_video_url') return item.type === 'video';
+                    return item.type === 'image';
+                  })
+                  .map((item) => (
+                    <button
+                      key={item.url}
+                      type="button"
+                      onClick={() => {
+                        setHeroSettings({
+                          ...heroSettings,
+                          [selectHeroMediaPicker]: item.url,
+                          hero_media_type: selectHeroMediaPicker === 'hero_video_url' ? 'video' : 'image',
+                        });
+                        setSelectHeroMediaPicker(null);
+                        triggerToast(`Selected ${item.name} for hero!`);
+                      }}
+                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition flex flex-col justify-between"
+                    >
+                      <div className="aspect-square bg-black/40 overflow-hidden relative">
+                        {item.type === 'video' ? (
+                          <div className="w-full h-full flex items-center justify-center bg-black/60">
+                            <video src={item.url} className="w-full h-full object-cover opacity-75" />
+                            <Play className="w-6 h-6 text-[#E3B94E] absolute fill-current" />
+                          </div>
+                        ) : (
+                          <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        )}
+                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
+                          {item.size}
+                        </span>
+                      </div>
+                      <div className="p-2">
+                        <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
+                        <p className="text-[9px] text-[#A8AD94]">{item.folder}</p>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+
+              {mediaLibraryList.filter((item) => selectHeroMediaPicker === 'hero_video_url' ? item.type === 'video' : item.type === 'image').length === 0 && (
+                <div className="text-center py-12 text-[#A8AD94] text-xs">
+                  No matching media items found. Please upload to media files first.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: TEAM MEMBER ADD / EDIT ================= */}
+        {teamModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-lg w-full p-6 sm:p-7 rounded-3xl border border-white/20 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    {teamModal.mode === 'add' ? 'Add Team Member' : 'Edit Team Member'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setTeamModal(null)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveTeamMember} className="space-y-4 text-xs">
+                {/* Profile Photo */}
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Profile Photo
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#787C68] bg-black/40 shrink-0">
+                      {teamModal.preview || teamModal.member.image_url ? (
+                        <img src={teamModal.preview || teamModal.member.image_url} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#A8AD94]">
+                          Photo
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 flex-1">
+                      <label className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#EAEBE8] text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 transition">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload from Computer</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setTeamModal({
+                                ...teamModal,
+                                file,
+                                preview: URL.createObjectURL(file),
+                              });
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          loadMediaLibrary();
+                          setMediaPickerForTeam(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-[#E3B94E]/20 hover:bg-[#E3B94E] text-[#E3B94E] hover:text-[#232A23] text-xs font-semibold inline-flex items-center gap-1.5 transition ml-2"
+                      >
+                        <span>From Media Files</span>
+                      </button>
+
+                      <input
+                        type="text"
+                        value={teamModal.member.image_url || ''}
+                        onChange={(e) => setTeamModal({
+                          ...teamModal,
+                          member: { ...teamModal.member, image_url: e.target.value },
+                        })}
+                        placeholder="Or paste profile image URL"
+                        className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-1.5 text-[#EAEBE8] text-xs focus:border-[#787C68] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ghulam Muhammad Balti"
+                    value={teamModal.member.name || ''}
+                    onChange={(e) => setTeamModal({
+                      ...teamModal,
+                      member: { ...teamModal.member, name: e.target.value },
+                    })}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+
+                {/* Role / Designation */}
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Title / Designation *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. General Manager & Host, Executive Chef, Chief Guide"
+                    value={teamModal.member.role || ''}
+                    onChange={(e) => setTeamModal({
+                      ...teamModal,
+                      member: { ...teamModal.member, role: e.target.value },
+                    })}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+
+                {/* Bio / Description */}
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Bio / Description
+                  </label>
+                  <textarea
+                    rows="3"
+                    placeholder="Write a brief professional background or greeting..."
+                    value={teamModal.member.bio || ''}
+                    onChange={(e) => setTeamModal({
+                      ...teamModal,
+                      member: { ...teamModal.member, bio: e.target.value },
+                    })}
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+
+                {/* Sort Order */}
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Display Sort Order
+                  </label>
+                  <input
+                    type="number"
+                    value={teamModal.member.sort_order || 1}
+                    onChange={(e) => setTeamModal({
+                      ...teamModal,
+                      member: { ...teamModal.member, sort_order: parseInt(e.target.value, 10) || 1 },
+                    })}
+                    className="w-24 bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#787C68] focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setTeamModal(null)}
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[#A8AD94]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingTeamMember}
+                    className="px-5 py-2 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] font-bold uppercase tracking-wider transition disabled:opacity-40"
+                  >
+                    {savingTeamMember ? 'Saving...' : 'Save Team Member'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: PICK MEDIA FOR GALLERY ================= */}
+        {mediaPickerForGallery && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-4xl w-full p-6 rounded-3xl border border-white/20 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Image className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    Select Image from Media Files
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setMediaPickerForGallery(false)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {mediaLibraryList
+                  .filter((item) => item.type === 'image')
+                  .map((item) => (
+                    <button
+                      key={item.url}
+                      type="button"
+                      onClick={() => {
+                        setGalleryImageModal((prev) => ({
+                          ...prev,
+                          image: {
+                            ...prev.image,
+                            image_url: item.url,
+                            title: prev.image.title || item.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' '),
+                          },
+                          file: null,
+                          preview: item.url,
+                        }));
+                        setMediaPickerForGallery(false);
+                      }}
+                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                    >
+                      <div className="aspect-square bg-black/40 overflow-hidden relative">
+                        <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
+                          {item.size}
+                        </span>
+                      </div>
+                      <div className="p-2">
+                        <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: PICK MEDIA FOR TEAM ================= */}
+        {mediaPickerForTeam && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-4xl w-full p-6 rounded-3xl border border-white/20 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    Select Profile Photo for Team Member
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setMediaPickerForTeam(false)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {mediaLibraryList
+                  .filter((item) => item.type === 'image')
+                  .map((item) => (
+                    <button
+                      key={item.url}
+                      type="button"
+                      onClick={() => {
+                        setTeamModal((prev) => ({
+                          ...prev,
+                          member: { ...prev.member, image_url: item.url },
+                          file: null,
+                          preview: item.url,
+                        }));
+                        setMediaPickerForTeam(false);
+                      }}
+                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                    >
+                      <div className="aspect-square bg-black/40 overflow-hidden relative">
+                        <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
+                          {item.size}
+                        </span>
+                      </div>
+                      <div className="p-2">
+                        <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
         )}
 
       </div>

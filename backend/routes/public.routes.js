@@ -30,9 +30,29 @@ router.get('/home', async (req, res) => {
       images: typeof r.images === 'string' ? JSON.parse(r.images || '[]') : (r.images || []),
     }));
 
+    const rawSettings = await query('SELECT setting_key, setting_value FROM site_settings');
+    const settings = {};
+    (rawSettings || []).forEach(s => {
+      settings[s.setting_key] = s.setting_value;
+    });
+
+    const hero = {
+      media_type: settings.hero_media_type || 'image',
+      image_url: settings.hero_image_url || '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG',
+      video_url: settings.hero_video_url || '',
+      badge: settings.hero_badge || 'Katpana Cold Desert, Skardu • 2,228M',
+      title: settings.hero_title || 'Experience Nature in Luxury',
+      subtitle: settings.hero_subtitle || 'A tranquil sanctuary where high-altitude luxury meets the breathtaking serenity of Baltistan’s Karakoram mountain range.',
+      cta_text: settings.hero_cta_text || 'Explore Luxury Stays',
+      cta_link: settings.hero_cta_link || '/rooms',
+      video_button_text: settings.hero_video_button_text || 'Watch Resort Tour',
+    };
+
     res.json({
       success: true,
       data: {
+        hero,
+        settings,
         rooms: processedRooms,
         testimonials,
         offers,
@@ -47,7 +67,21 @@ router.get('/home', async (req, res) => {
   }
 });
 
-// 2. About Us
+// Settings Endpoint
+router.get('/settings', async (req, res) => {
+  try {
+    const rawSettings = await query('SELECT setting_key, setting_value FROM site_settings');
+    const settings = {};
+    (rawSettings || []).forEach(s => {
+      settings[s.setting_key] = s.setting_value;
+    });
+    res.json({ success: true, settings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to load site settings.' });
+  }
+});
+
+// 2. About Us & Team
 router.get('/about', async (req, res) => {
   try {
     const team = await query('SELECT * FROM team_members ORDER BY sort_order ASC');
@@ -55,6 +89,15 @@ router.get('/about', async (req, res) => {
     res.json({ success: true, team, testimonials });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to load about us data.' });
+  }
+});
+
+router.get('/team', async (req, res) => {
+  try {
+    const team = await query('SELECT * FROM team_members ORDER BY sort_order ASC');
+    res.json({ success: true, team });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to load team data.' });
   }
 });
 

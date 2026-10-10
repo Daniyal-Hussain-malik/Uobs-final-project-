@@ -386,6 +386,34 @@ async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS site_settings (
+        setting_key VARCHAR(100) PRIMARY KEY,
+        setting_value LONGTEXT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Ensure default hero settings exist
+    const defaultSettings = [
+      ['hero_media_type', 'image'],
+      ['hero_image_url', '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG'],
+      ['hero_video_url', '/uploads/rooms/fbac89b9f17e4ef5939dde3f37a7110d.MOV'],
+      ['hero_badge', 'Katpana Cold Desert, Skardu • 2,228M'],
+      ['hero_title', 'Experience Nature in Luxury'],
+      ['hero_subtitle', 'Katpana Cold Desert, Skardu — Where the serene Karakoram peaks meet unparalleled Balti warmth and modern five-star comfort.'],
+      ['hero_cta_text', 'Explore Luxury Stays'],
+      ['hero_cta_link', '/rooms'],
+      ['hero_video_button_text', 'Watch Resort Tour'],
+    ];
+
+    for (const [sKey, sVal] of defaultSettings) {
+      await p.query(
+        'INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES (?, ?)',
+        [sKey, sVal]
+      );
+    }
+
     // 4. Check if demo seeding is needed
     const users = await query('SELECT COUNT(*) as count FROM users');
     if (users[0].count === 0) {
