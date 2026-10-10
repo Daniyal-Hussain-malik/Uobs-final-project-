@@ -37,9 +37,9 @@ router.get('/home', async (req, res) => {
     });
 
     const hero = {
-      media_type: settings.hero_media_type || 'image',
+      media_type: settings.hero_media_type || 'video',
       image_url: settings.hero_image_url || '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG',
-      video_url: settings.hero_video_url || '',
+      video_url: settings.hero_video_url || '/uploads/rooms/fbac89b9f17e4ef5939dde3f37a7110d.mp4',
       badge: settings.hero_badge || 'Katpana Cold Desert, Skardu • 2,228M',
       title: settings.hero_title || 'Experience Nature in Luxury',
       subtitle: settings.hero_subtitle || 'A tranquil sanctuary where high-altitude luxury meets the breathtaking serenity of Baltistan’s Karakoram mountain range.',

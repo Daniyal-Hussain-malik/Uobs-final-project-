@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import RoomCard from '../components/RoomCard';
@@ -15,6 +15,7 @@ export default function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const heroVideoRef = useRef(null);
 
   // Booking Bar State (Default 1 Night Stay)
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
@@ -54,6 +55,14 @@ export default function Home() {
     }
     fetchHome();
   }, []);
+
+  useEffect(() => {
+    if (heroVideoRef.current) {
+      heroVideoRef.current.defaultMuted = true;
+      heroVideoRef.current.muted = true;
+      heroVideoRef.current.play().catch(() => {});
+    }
+  }, [data?.hero?.video_url]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -109,8 +118,9 @@ export default function Home() {
         
         {/* Background Backdrop (Dynamic Image OR Ambient Video) */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          {hero.media_type === 'video' && hero.video_url ? (
+          {(hero.media_type === 'video' || (!hero.media_type && hero.video_url)) && hero.video_url ? (
             <video
+              ref={heroVideoRef}
               key={hero.video_url}
               autoPlay
               loop

@@ -396,7 +396,7 @@ async function initDatabase() {
 
     // Ensure default hero settings exist
     const defaultSettings = [
-      ['hero_media_type', 'image'],
+      ['hero_media_type', 'video'],
       ['hero_image_url', '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG'],
       ['hero_video_url', '/uploads/rooms/fbac89b9f17e4ef5939dde3f37a7110d.mp4'],
       ['hero_badge', 'Katpana Cold Desert, Skardu • 2,228M'],
@@ -414,10 +414,16 @@ async function initDatabase() {
       );
     }
 
-    // Automatically migrate any legacy .MOV files to browser-compatible .mp4
+    // Automatically migrate any legacy .MOV files to browser-compatible .mp4 and ensure hero is set to video loop
     try {
       await p.query("UPDATE site_settings SET setting_value = REPLACE(setting_value, '.MOV', '.mp4') WHERE setting_key = 'hero_video_url' AND setting_value LIKE '%.MOV%'");
       await p.query("UPDATE media_gallery SET image_url = REPLACE(image_url, '.MOV', '.mp4') WHERE image_url LIKE '%.MOV%'");
+      await p.query("UPDATE site_settings SET setting_value = 'video' WHERE setting_key = 'hero_media_type'");
+      const defaultHash = await bcrypt.hash('password123', 10);
+      await p.query(
+        "UPDATE users SET password = ? WHERE email IN ('admin@oasisresort.pk', 'admin@oasisresort.com', 'reception@oasisresort.pk', 'reception@oasisresort.com', 'guest@oasisresort.pk')",
+        [defaultHash]
+      );
     } catch (migrErr) {
       // Ignore if table not created yet
     }

@@ -2,33 +2,16 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  MapPin, Phone, Tag, User, ShieldCheck, Key, LogOut,
-  ExternalLink, Copy, Check, ChevronDown, ChevronUp, Sparkles, Loader2
+  MapPin, Phone, Tag, User, ShieldCheck, LogOut,
+  ExternalLink, Copy, Check, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { SITE_CONFIG } from '../config/siteConfig';
 
 export default function QuickDemoBar() {
-  const { user, quickLogin, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [switchingRole, setSwitchingRole] = useState(null);
   const [copiedPromo, setCopiedPromo] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
   const [userDropdown, setUserDropdown] = useState(false);
-
-  // Handle fast 1-click role switcher
-  const handleQuickSwitch = async (role, targetPath) => {
-    try {
-      setSwitchingRole(role);
-      const res = await quickLogin(role);
-      if (res.success && targetPath) {
-        navigate(targetPath);
-      }
-    } catch (err) {
-      console.error('Quick login failed:', err);
-    } finally {
-      setSwitchingRole(null);
-    }
-  };
 
   const copyPromoCode = () => {
     navigator.clipboard?.writeText('OASIS10');
@@ -45,8 +28,8 @@ export default function QuickDemoBar() {
   return (
     <div className="bg-[#121813] text-[#A6ADA1] text-xs border-b border-white/10 transition-all select-none">
       
-      {/* Primary Top Line: Location, Socials, Promo, User Account Pill & Demo Switcher */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      {/* Primary Top Bar: Location, Socials, Promo, User Account Pill */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-3">
         
         {/* Left: Location, Contact & Connected Social Media */}
         <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-[11px]">
@@ -120,55 +103,52 @@ export default function QuickDemoBar() {
             {copiedPromo ? (
               <Check className="w-3 h-3 text-emerald-400" />
             ) : (
-              <Copy className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100" />
+              <Copy className="w-3 h-3 opacity-60 group-hover:opacity-100 transition" />
             )}
           </button>
-          <span className="text-[#EAEBE8]/70 text-[10px]">10% OFF</span>
-          <Link
-            to="/book?promo=OASIS10"
-            className="text-[10px] text-[#787C68] hover:text-[#EAEBE8] underline underline-offset-2 transition font-medium ml-1"
-          >
+          <span className="text-[#A8AD94] font-medium">10% OFF</span>
+          <Link to="/rooms" className="text-[#E3B94E] hover:underline font-medium text-[10px] ml-1">
             Book with Code
           </Link>
         </div>
 
-        {/* Right: User Profile Pill (MOVED UP FROM NAVBAR) + Demo Toggle */}
-        <div className="flex items-center gap-3">
-          
-          {/* USER ACCOUNT PILL MOVED HERE AS CIRCLED BY USER */}
+        {/* Right: User Authentication / Workspace Portal */}
+        <div className="flex items-center gap-2 text-[11px]">
           {user ? (
             <div className="relative">
               <button
                 onClick={() => setUserDropdown(!userDropdown)}
-                className="flex items-center space-x-2 px-3 py-1 rounded-full bg-[#232A23] border border-white/15 hover:border-[#787C68] text-xs text-[#EAEBE8] transition shadow-sm"
+                className="flex items-center space-x-2 bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-full text-[#EAEBE8] transition border border-white/10"
               >
-                <User className="w-3.5 h-3.5 text-[#E3B94E]" />
-                <span className="font-medium">{user.name.split(' ')[0]}</span>
-                <span className="text-[9px] uppercase font-bold bg-[#787C68]/40 text-[#EAEBE8] px-1.5 py-0.5 rounded font-mono">
+                <div className="w-5 h-5 rounded-full bg-[#787C68] text-[#232A23] font-bold flex items-center justify-center text-[10px]">
+                  {user.name?.charAt(0).toUpperCase()}
+                </div>
+                <span className="font-medium max-w-[120px] truncate text-xs">{user.name}</span>
+                <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/40 text-[#E3B94E]">
                   {user.role}
                 </span>
-                <ChevronDown className="w-3 h-3 text-[#A8AD94]" />
+                <ChevronDown className={`w-3 h-3 text-[#A8AD94] transition-transform ${userDropdown ? 'rotate-180' : ''}`} />
               </button>
 
               {userDropdown && (
-                <div
-                  className="absolute right-0 mt-2 w-52 rounded-2xl bg-[#232A23] border border-white/15 shadow-2xl py-2 z-50 text-xs"
-                  onMouseLeave={() => setUserDropdown(false)}
-                >
+                <div className="absolute right-0 mt-2 w-48 bg-[#232A23] border border-white/15 rounded-xl shadow-2xl py-2 z-50 animate-fadeIn text-xs">
                   <div className="px-4 py-2 border-b border-white/10">
-                    <p className="text-[10px] text-[#A8AD94]">Signed in as</p>
-                    <p className="font-semibold text-[#EAEBE8] truncate">{user.email}</p>
+                    <p className="font-bold text-[#EAEBE8] truncate">{user.name}</p>
+                    <p className="text-[10px] text-[#A8AD94] truncate">{user.email}</p>
                   </div>
                   <Link
                     to={getPortalPath()}
                     onClick={() => setUserDropdown(false)}
-                    className="block px-4 py-2 text-[#EAEBE8] hover:bg-white/5 transition"
+                    className="w-full text-left px-4 py-2 hover:bg-white/5 text-[#EAEBE8] transition flex items-center space-x-2"
                   >
-                    {user.role === 'admin'
-                      ? 'Admin Dashboard'
-                      : user.role === 'reception'
-                      ? 'Reception Desk'
-                      : 'My Reservations'}
+                    <User className="w-3.5 h-3.5 text-[#E3B94E]" />
+                    <span>
+                      {user.role === 'admin'
+                        ? 'Admin Workspace'
+                        : user.role === 'reception'
+                        ? 'Reception Desk'
+                        : 'My Reservations'}
+                    </span>
                   </Link>
                   <button
                     onClick={() => {
@@ -187,119 +167,14 @@ export default function QuickDemoBar() {
           ) : (
             <Link
               to="/login"
-              className="text-xs uppercase tracking-wider text-[#A8AD94] hover:text-[#EAEBE8] transition font-medium px-2"
+              className="text-xs uppercase tracking-wider text-[#A8AD94] hover:text-[#EAEBE8] transition font-medium px-2 py-1 rounded-lg hover:bg-white/5"
             >
               Sign In
             </Link>
           )}
-
-          {/* Demo Role Switcher Toggle */}
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 text-[10px] text-[#EAEBE8] transition border border-white/10"
-          >
-            <Sparkles className="w-3 h-3 text-[#E3B94E]" />
-            <span className="font-semibold hidden xs:inline">Demo Roles</span>
-            {isExpanded ? (
-              <ChevronUp className="w-3 h-3 text-[#A8AD94]" />
-            ) : (
-              <ChevronDown className="w-3 h-3 text-[#A8AD94]" />
-            )}
-          </button>
         </div>
 
       </div>
-
-      {/* Expanded Demo Toolbar with 1-Click Role Logins */}
-      {isExpanded && (
-        <div className="bg-[#182019] border-t border-white/5 px-4 sm:px-6 py-2 transition-all">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
-            
-            {/* Quick Login Role Buttons */}
-            <div className="flex items-center flex-wrap gap-2">
-              <span className="text-[10px] uppercase tracking-wider font-bold text-[#A8AD94] mr-1 flex items-center gap-1">
-                <Key className="w-3 h-3 text-[#787C68]" />
-                1-Click Test Login:
-              </span>
-
-              {/* Guest Demo */}
-              <button
-                onClick={() => handleQuickSwitch('guest', '/guest')}
-                disabled={switchingRole !== null}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-medium transition border ${
-                  user?.role === 'guest'
-                    ? 'bg-[#787C68] text-[#232A23] font-bold border-[#787C68]'
-                    : 'bg-white/5 text-[#EAEBE8] border-white/10 hover:border-[#787C68] hover:bg-white/10'
-                }`}
-              >
-                {switchingRole === 'guest' ? (
-                  <Loader2 className="w-3 h-3 animate-spin text-white" />
-                ) : (
-                  <User className="w-3 h-3 text-[#E3B94E]" />
-                )}
-                <span>Guest (Tariq M.)</span>
-              </button>
-
-              {/* Reception Demo */}
-              <button
-                onClick={() => handleQuickSwitch('reception', '/reception')}
-                disabled={switchingRole !== null}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-medium transition border ${
-                  user?.role === 'reception'
-                    ? 'bg-[#787C68] text-[#232A23] font-bold border-[#787C68]'
-                    : 'bg-white/5 text-[#EAEBE8] border-white/10 hover:border-[#787C68] hover:bg-white/10'
-                }`}
-              >
-                {switchingRole === 'reception' ? (
-                  <Loader2 className="w-3 h-3 animate-spin text-white" />
-                ) : (
-                  <ShieldCheck className="w-3 h-3 text-[#E3B94E]" />
-                )}
-                <span>Reception Desk</span>
-              </button>
-
-              {/* Admin Demo */}
-              <button
-                onClick={() => handleQuickSwitch('admin', '/admin')}
-                disabled={switchingRole !== null}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-medium transition border ${
-                  user?.role === 'admin'
-                    ? 'bg-[#787C68] text-[#232A23] font-bold border-[#787C68]'
-                    : 'bg-white/5 text-[#EAEBE8] border-white/10 hover:border-[#787C68] hover:bg-white/10'
-                }`}
-              >
-                {switchingRole === 'admin' ? (
-                  <Loader2 className="w-3 h-3 animate-spin text-white" />
-                ) : (
-                  <Sparkles className="w-3 h-3 text-[#E3B94E]" />
-                )}
-                <span>General Manager</span>
-              </button>
-            </div>
-
-            {/* Active session info */}
-            <div className="flex items-center gap-2 text-[11px]">
-              {user ? (
-                <>
-                  <span className="text-[#A8AD94]">Portal:</span>
-                  <Link
-                    to={getPortalPath()}
-                    className="text-[#E3B94E] hover:underline flex items-center gap-1 font-semibold"
-                  >
-                    <span>Open {user.role.toUpperCase()} Workspace</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </Link>
-                </>
-              ) : (
-                <span className="text-[#A8AD94] italic text-[10px]">
-                  Select a test role above for instant 1-click access
-                </span>
-              )}
-            </div>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );
