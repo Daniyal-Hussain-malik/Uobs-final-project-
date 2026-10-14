@@ -128,6 +128,7 @@ export default function AdminDashboard() {
   const [savingTeamMember, setSavingTeamMember] = useState(false);
   const [mediaPickerForTeam, setMediaPickerForTeam] = useState(false);
   const [mediaPickerForGallery, setMediaPickerForGallery] = useState(false);
+  const [mediaPickerTarget, setMediaPickerTarget] = useState('gallery_upload');
   const [mediaPickerForRoomFeatured, setMediaPickerForRoomFeatured] = useState(false);
   const [mediaPickerForRoomGallery, setMediaPickerForRoomGallery] = useState(false);
 
@@ -970,22 +971,45 @@ export default function AdminDashboard() {
     const { mode, image, file } = galleryImageModal;
     setUploadingGalleryItem(true);
     try {
-      const fd = new FormData();
-      if (file) fd.append('image', file);
-      if (image.image_url) fd.append('image_url', image.image_url);
-      fd.append('title', image.title || 'Resort Photography');
-      fd.append('category', image.category || (galleryCatsList[0]?.name || 'General'));
-      fd.append('is_featured', image.is_featured ? 1 : 0);
-      fd.append('sort_order', image.sort_order || 0);
-
       let res;
-      if (mode === 'add') {
-        res = await api.post('/admin/gallery', fd);
+      if (file) {
+        const fd = new FormData();
+        fd.append('image', file);
+        if (image.image_url) fd.append('image_url', image.image_url);
+        fd.append('title', image.title || 'Resort Photography');
+        fd.append('category', image.category || (galleryCatsList[0]?.name || 'General'));
+        fd.append('is_featured', image.is_featured ? 1 : 0);
+        fd.append('sort_order', image.sort_order || 0);
+
+        if (mode === 'add') {
+          res = await api.post('/admin/gallery', fd);
+        } else {
+          res = await api.put(`/admin/gallery/${image.id}`, fd);
+        }
       } else {
-        res = await api.put(`/admin/gallery/${image.id}`, fd);
+        const payload = {
+          title: image.title || 'Resort Photography',
+          category: image.category || (galleryCatsList[0]?.name || 'General'),
+          image_url: image.image_url,
+          is_featured: image.is_featured ? 1 : 0,
+          sort_order: image.sort_order || 0,
+        };
+
+        if (!payload.image_url) {
+          triggerToast('Please select a media file or upload an image.');
+          setUploadingGalleryItem(false);
+          return;
+        }
+
+        if (mode === 'add') {
+          res = await api.post('/admin/gallery', payload);
+        } else {
+          res = await api.put(`/admin/gallery/${image.id}`, payload);
+        }
       }
+
       if (res.success) {
-        triggerToast(res.message);
+        triggerToast(res.message || 'Gallery media saved successfully.');
         setGalleryImageModal(null);
         loadGalleryImages();
         loadGalleryCats();
@@ -1002,16 +1026,20 @@ export default function AdminDashboard() {
     if (!replaceImageModal) return;
     const { image, file, url } = replaceImageModal;
     if (!file && !url) {
-      triggerToast('Please select a replacement image file or enter a valid URL.');
+      triggerToast('Please select a replacement image file or choose one from Media Files.');
       return;
     }
     setUploadingGalleryItem(true);
     try {
-      const fd = new FormData();
-      if (file) fd.append('image', file);
-      if (url) fd.append('image_url', url);
+      let res;
+      if (file) {
+        const fd = new FormData();
+        fd.append('image', file);
+        res = await api.post(`/admin/gallery/${image.id}/replace-image`, fd);
+      } else {
+        res = await api.post(`/admin/gallery/${image.id}/replace-image`, { image_url: url });
+      }
 
-      const res = await api.post(`/admin/gallery/${image.id}/replace-image`, fd);
       if (res.success) {
         triggerToast('Image replaced successfully.');
         setReplaceImageModal(null);
@@ -5029,12 +5057,14 @@ export default function AdminDashboard() {
                       <button
                         type="button"
                         onClick={() => {
-                          loadMediaLibrary();
+                          if (mediaLibraryList.length === 0) loadMediaLibrary();
+                          setMediaPickerTarget('gallery_upload');
                           setMediaPickerForGallery(true);
                         }}
-                        className="px-3 py-1 rounded-lg bg-[#E3B94E]/20 hover:bg-[#E3B94E] text-[#E3B94E] hover:text-[#232A23] font-bold text-[10px] transition"
+                        className="px-3.5 py-1.5 rounded-xl bg-[#E3B94E]/20 hover:bg-[#E3B94E] text-[#E3B94E] hover:text-[#232A23] font-bold text-xs flex items-center gap-1.5 transition border border-[#E3B94E]/30"
                       >
-                        Select from Media Files
+                        <Folder className="w-3.5 h-3.5" />
+                        <span>Select from Media Files</span>
                       </button>
                     </div>
                   </div>
@@ -5044,14 +5074,16 @@ export default function AdminDashboard() {
                     <div className="mt-3 relative rounded-2xl overflow-hidden aspect-video bg-black/60 border border-white/15 flex items-center justify-center">
                       {(galleryImageModal.file?.type?.startsWith('video') || isVideoMedia(galleryImageModal.file?.name || galleryImageModal.preview || galleryImageModal.image.image_url)) ? (
                         <video
-                          src={galleryImageModal.preview || galleryImageModal.image.image_url}
+                          src={getMediaUrl(galleryImageModal.preview || galleryImageModal.image.image_url)}
+                          onError={handleMediaError}
                           controls
                           playsInline
                           className="w-full h-full object-contain"
                         />
                       ) : (
                         <img
-                          src={galleryImageModal.preview || galleryImageModal.image.image_url}
+                          src={getMediaUrl(galleryImageModal.preview || galleryImageModal.image.image_url)}
+                          onError={handleMediaError}
                           alt="Media Preview"
                           className="w-full h-full object-cover"
                         />
@@ -5209,14 +5241,16 @@ export default function AdminDashboard() {
                     <div className="aspect-square rounded-2xl overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center">
                       {isVideoMedia(replaceImageModal.image.image_url) ? (
                         <video
-                          src={replaceImageModal.image.image_url}
+                          src={getMediaUrl(replaceImageModal.image.image_url)}
+                          onError={handleMediaError}
                           controls
                           playsInline
                           className="w-full h-full object-contain"
                         />
                       ) : (
                         <img
-                          src={replaceImageModal.image.image_url}
+                          src={getMediaUrl(replaceImageModal.image.image_url)}
+                          onError={handleMediaError}
                           alt="Current"
                           className="w-full h-full object-cover"
                         />
@@ -5230,21 +5264,23 @@ export default function AdminDashboard() {
                       {replaceImageModal.preview || replaceImageModal.url ? (
                         replaceImageModal.file?.type?.startsWith('video') || isVideoMedia(replaceImageModal.file?.name || replaceImageModal.preview || replaceImageModal.url) ? (
                           <video
-                            src={replaceImageModal.preview || replaceImageModal.url}
+                            src={getMediaUrl(replaceImageModal.preview || replaceImageModal.url)}
+                            onError={handleMediaError}
                             controls
                             playsInline
                             className="w-full h-full object-contain"
                           />
                         ) : (
                           <img
-                            src={replaceImageModal.preview || replaceImageModal.url}
+                            src={getMediaUrl(replaceImageModal.preview || replaceImageModal.url)}
+                            onError={handleMediaError}
                             alt="Replacement Preview"
                             className="w-full h-full object-cover"
                           />
                         )
                       ) : (
                         <span className="text-[10px] text-[#A8AD94] text-center p-3">
-                          Select a new photo/video file or paste URL below
+                          Select a new file, browse Media Files, or paste URL below
                         </span>
                       )}
                     </div>
@@ -5272,6 +5308,7 @@ export default function AdminDashboard() {
                             ...prev,
                             file,
                             preview,
+                            url: '',
                           }));
                         }
                       }}
@@ -5279,16 +5316,38 @@ export default function AdminDashboard() {
                     />
                   </label>
 
+                  {/* Quick Select from Media Files */}
+                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-2xl border border-white/10">
+                    <div>
+                      <span className="text-xs font-semibold text-[#EAEBE8] block">Select from Media Files</span>
+                      <span className="text-[10px] text-[#A8AD94]">Choose from existing room, reel, or gallery uploads</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (mediaLibraryList.length === 0) loadMediaLibrary();
+                        setMediaPickerTarget('gallery_replace');
+                        setMediaPickerForGallery(true);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#E3B94E] hover:bg-[#c99f36] text-[#232A23] font-bold text-xs flex items-center gap-1.5 transition shadow"
+                    >
+                      <Folder className="w-3.5 h-3.5" />
+                      <span>Browse Media Files</span>
+                    </button>
+                  </div>
+
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-[#A8AD94] uppercase font-bold shrink-0">Or New URL:</span>
                     <input
                       type="url"
-                      placeholder="https://... new image URL"
+                      placeholder="https://... new image URL or path"
                       value={replaceImageModal.url || ''}
                       onChange={(e) =>
                         setReplaceImageModal((prev) => ({
                           ...prev,
                           url: e.target.value,
+                          preview: e.target.value,
+                          file: null,
                         }))
                       }
                       className="flex-1 bg-[#1E241E] border border-white/10 rounded-xl px-3 py-1.5 text-[#EAEBE8] text-xs focus:border-[#787C68] focus:outline-none"
@@ -5308,9 +5367,16 @@ export default function AdminDashboard() {
                   <button
                     type="submit"
                     disabled={uploadingGalleryItem || (!replaceImageModal.file && !replaceImageModal.url)}
-                    className="px-5 py-2 rounded-xl bg-[#E3B94E] hover:bg-[#c99f36] text-[#232A23] font-bold uppercase tracking-wider transition disabled:opacity-40"
+                    className="px-5 py-2 rounded-xl bg-[#E3B94E] hover:bg-[#c99f36] text-[#232A23] font-bold uppercase tracking-wider transition disabled:opacity-40 flex items-center gap-2"
                   >
-                    {uploadingGalleryItem ? 'Replacing...' : 'Confirm & Replace Image'}
+                    {uploadingGalleryItem ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Replacing...</span>
+                      </>
+                    ) : (
+                      <span>Confirm &amp; Replace Image</span>
+                    )}
                   </button>
                 </div>
               </form>
@@ -5534,8 +5600,22 @@ export default function AdminDashboard() {
               </div>
 
               <form onSubmit={handleConfirmAddToGallery} className="space-y-4 text-xs">
-                <div className="aspect-[16/10] rounded-2xl overflow-hidden bg-black/40 border border-white/15">
-                  <img src={addToGalleryModal.media_url} alt="Preview" className="w-full h-full object-cover" />
+                <div className="aspect-[16/10] rounded-2xl overflow-hidden bg-black/40 border border-white/15 flex items-center justify-center">
+                  {isVideoMedia(addToGalleryModal.media_url) ? (
+                    <video
+                      src={getMediaUrl(addToGalleryModal.media_url)}
+                      controls
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={getMediaUrl(addToGalleryModal.media_url)}
+                      onError={handleMediaError}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -5853,10 +5933,11 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-2">
                   <Film className="w-5 h-5 text-[#E3B94E]" />
                   <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
-                    Select Photo or Video from Media Files
+                    {mediaPickerTarget === 'gallery_replace' ? 'Select Replacement from Media Files' : 'Select Photo or Video for Gallery'}
                   </h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setMediaPickerForGallery(false)}
                   className="text-[#A8AD94] hover:text-white text-lg font-bold"
                 >
@@ -5864,48 +5945,88 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {mediaLibraryList.map((item) => (
+              {loadingMediaLib ? (
+                <div className="py-16 text-center text-xs text-[#A8AD94] flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#E3B94E]" />
+                  <span>Loading media files...</span>
+                </div>
+              ) : mediaLibraryList.length === 0 ? (
+                <div className="py-16 text-center text-xs text-[#A8AD94] space-y-2">
+                  <p>No media files found in uploads.</p>
                   <button
-                    key={item.url}
                     type="button"
-                    onClick={() => {
-                      setGalleryImageModal((prev) => ({
-                        ...prev,
-                        image: {
-                          ...prev.image,
-                          image_url: item.url,
-                          title: prev.image.title || item.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' '),
-                        },
-                        file: null,
-                        preview: item.url,
-                      }));
-                      setMediaPickerForGallery(false);
-                    }}
-                    className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                    onClick={loadMediaLibrary}
+                    className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold"
                   >
-                    <div className="aspect-square bg-black/40 overflow-hidden relative flex items-center justify-center">
-                      {item.type === 'video' ? (
-                        <div className="relative w-full h-full flex items-center justify-center bg-[#151915]">
-                          <video src={item.url} muted preload="metadata" className="w-full h-full object-cover opacity-80" />
-                          <div className="w-8 h-8 rounded-full bg-black/60 text-[#E3B94E] flex items-center justify-center border border-white/20 shadow pointer-events-none">
-                            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                          </div>
-                          <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[8px] bg-rose-500/80 text-white font-bold">VIDEO</span>
-                        </div>
-                      ) : (
-                        <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                      )}
-                      <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
-                        {item.size}
-                      </span>
-                    </div>
-                    <div className="p-2">
-                      <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
-                    </div>
+                    Refresh Media Files
                   </button>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {mediaLibraryList.map((item) => (
+                    <button
+                      key={item.url}
+                      type="button"
+                      onClick={() => {
+                        if (mediaPickerTarget === 'gallery_replace' || replaceImageModal) {
+                          setReplaceImageModal((prev) => ({
+                            ...(prev || {}),
+                            file: null,
+                            url: item.url,
+                            preview: item.url,
+                          }));
+                        } else {
+                          setGalleryImageModal((prev) => ({
+                            mode: prev?.mode || 'add',
+                            image: {
+                              ...(prev?.image || {}),
+                              image_url: item.url,
+                              title: prev?.image?.title || item.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' '),
+                              category: prev?.image?.category || (galleryCatsList[0]?.name || 'Landscape & Dunes'),
+                              is_featured: prev?.image?.is_featured ?? 1,
+                              sort_order: prev?.image?.sort_order ?? (galleryImagesList.length + 1),
+                            },
+                            file: null,
+                            preview: item.url,
+                          }));
+                        }
+                        setMediaPickerForGallery(false);
+                      }}
+                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                    >
+                      <div className="aspect-square bg-black/40 overflow-hidden relative flex items-center justify-center">
+                        {item.type === 'video' ? (
+                          <div className="relative w-full h-full flex items-center justify-center bg-[#151915]">
+                            <video
+                              src={getMediaUrl(item.url)}
+                              muted
+                              preload="metadata"
+                              className="w-full h-full object-cover opacity-80"
+                            />
+                            <div className="w-8 h-8 rounded-full bg-black/60 text-[#E3B94E] flex items-center justify-center border border-white/20 shadow pointer-events-none">
+                              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                            </div>
+                            <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[8px] bg-rose-500/80 text-white font-bold">VIDEO</span>
+                          </div>
+                        ) : (
+                          <img
+                            src={getMediaUrl(item.url)}
+                            onError={handleMediaError}
+                            alt={item.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition"
+                          />
+                        )}
+                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
+                          {item.size}
+                        </span>
+                      </div>
+                      <div className="p-2">
+                        <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -1048,38 +1048,52 @@ router.get('/gallery', async (req, res) => {
 
 router.post('/gallery', uploadGalleryMedia.single('image'), async (req, res) => {
   try {
-    let { title, category, image_url, is_featured = 0, sort_order = 0 } = req.body;
+    const body = req.body || {};
+    let { title, category, image_url, is_featured = 0, sort_order = 0 } = body;
 
     if (req.file) {
       image_url = `/uploads/gallery/${req.file.filename}`;
     }
 
-    if (!image_url || !image_url.trim()) {
-      return res.status(422).json({ success: false, message: 'Please upload an image file or provide an image URL.' });
+    image_url = (image_url || '').toString().trim();
+    if (image_url && !image_url.startsWith('/') && !image_url.startsWith('http://') && !image_url.startsWith('https://')) {
+      image_url = '/' + image_url;
+    }
+
+    if (!image_url) {
+      return res.status(422).json({ success: false, message: 'Please upload an image file or choose one from Media Files.' });
     }
 
     if (!title || !title.trim()) {
       title = 'Resort Photography';
     }
 
-    if (!category || !category.trim()) {
+    let cat = (category || '').trim();
+    if (!cat) {
       const defaultCat = await query('SELECT name FROM gallery_categories ORDER BY sort_order ASC LIMIT 1');
-      category = defaultCat.length > 0 ? defaultCat[0].name : 'General';
+      cat = defaultCat.length > 0 ? defaultCat[0].name : 'Resort Grounds';
+    }
+
+    // Ensure category exists in gallery_categories
+    const existingCat = await query('SELECT name FROM gallery_categories WHERE name = ?', [cat]);
+    if (existingCat.length === 0) {
+      const slug = cat.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      await query('INSERT IGNORE INTO gallery_categories (name, slug) VALUES (?, ?)', [cat, slug]);
     }
 
     const result = await query(
       'INSERT INTO media_gallery (title, category, image_url, is_featured, sort_order) VALUES (?, ?, ?, ?, ?)',
-      [title.trim(), category.trim(), image_url.trim(), (is_featured === '1' || is_featured === 1 || is_featured === true) ? 1 : 0, parseInt(sort_order, 10) || 0]
+      [title.trim(), cat, image_url, (is_featured === '1' || is_featured === 1 || is_featured === true) ? 1 : 0, parseInt(sort_order, 10) || 0]
     );
 
     res.status(201).json({
       success: true,
-      message: 'Gallery image uploaded successfully.',
+      message: 'Gallery image saved successfully.',
       image: {
         id: result.insertId,
         title: title.trim(),
-        category: category.trim(),
-        image_url: image_url.trim(),
+        category: cat,
+        image_url,
         is_featured: (is_featured === '1' || is_featured === 1 || is_featured === true) ? 1 : 0,
         sort_order: parseInt(sort_order, 10) || 0,
       },
@@ -1093,7 +1107,8 @@ router.post('/gallery', uploadGalleryMedia.single('image'), async (req, res) => 
 router.put('/gallery/:id', uploadGalleryMedia.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
-    let { title, category, image_url, is_featured, sort_order } = req.body;
+    const body = req.body || {};
+    let { title, category, image_url, is_featured, sort_order } = body;
 
     const existing = await query('SELECT * FROM media_gallery WHERE id = ?', [id]);
     if (existing.length === 0) {
@@ -1111,7 +1126,12 @@ router.put('/gallery/:id', uploadGalleryMedia.single('image'), async (req, res) 
           try { fs.unlinkSync(oldPath); } catch (e) { /* ignore */ }
         }
       }
-    } else if (!image_url) {
+    } else if (image_url) {
+      image_url = image_url.toString().trim();
+      if (!image_url.startsWith('/') && !image_url.startsWith('http://') && !image_url.startsWith('https://')) {
+        image_url = '/' + image_url;
+      }
+    } else {
       image_url = current.image_url;
     }
 
@@ -1146,8 +1166,19 @@ router.put('/gallery/:id', uploadGalleryMedia.single('image'), async (req, res) 
 router.post('/gallery/:id/replace-image', uploadGalleryMedia.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
-    if (!req.file && !req.body.image_url) {
-      return res.status(422).json({ success: false, message: 'No replacement image provided.' });
+    const body = req.body || {};
+    let newUrl = body.image_url ? String(body.image_url).trim() : '';
+
+    if (req.file) {
+      newUrl = `/uploads/gallery/${req.file.filename}`;
+    }
+
+    if (newUrl && !newUrl.startsWith('/') && !newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
+      newUrl = '/' + newUrl;
+    }
+
+    if (!newUrl) {
+      return res.status(422).json({ success: false, message: 'No replacement image provided. Please choose a file or select from Media Files.' });
     }
 
     const existing = await query('SELECT * FROM media_gallery WHERE id = ?', [id]);
@@ -1156,9 +1187,7 @@ router.post('/gallery/:id/replace-image', uploadGalleryMedia.single('image'), as
     }
     const current = existing[0];
 
-    let newUrl = req.body.image_url;
     if (req.file) {
-      newUrl = `/uploads/gallery/${req.file.filename}`;
       const oldUrl = current.image_url;
       if (oldUrl && oldUrl.startsWith('/uploads/gallery/')) {
         const oldPath = getLocalUploadedFilePath(oldUrl);
