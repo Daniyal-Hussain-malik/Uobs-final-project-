@@ -1039,6 +1039,7 @@ router.delete('/gallery-categories/:id', async (req, res) => {
 
 router.get('/gallery', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     const images = await query('SELECT * FROM media_gallery ORDER BY sort_order ASC, created_at DESC');
     res.json({ success: true, images });
   } catch (err) {
@@ -1086,10 +1087,12 @@ router.post('/gallery', uploadGalleryMedia.single('image'), async (req, res) => 
       [title.trim(), cat, image_url, (is_featured === '1' || is_featured === 1 || is_featured === true) ? 1 : 0, parseInt(sort_order, 10) || 0]
     );
 
+    const created = await query('SELECT * FROM media_gallery WHERE id = ?', [result.insertId]);
+
     res.status(201).json({
       success: true,
       message: 'Gallery image saved successfully.',
-      image: {
+      image: created[0] || {
         id: result.insertId,
         title: title.trim(),
         category: cat,
@@ -1140,15 +1143,25 @@ router.put('/gallery/:id', uploadGalleryMedia.single('image'), async (req, res) 
     const newFeatured = is_featured !== undefined ? (is_featured === '1' || is_featured === 1 || is_featured === true ? 1 : 0) : current.is_featured;
     const newSort = sort_order !== undefined ? parseInt(sort_order, 10) || 0 : current.sort_order;
 
+    if (newCategory) {
+      const existingCat = await query('SELECT name FROM gallery_categories WHERE name = ?', [newCategory]);
+      if (existingCat.length === 0) {
+        const slug = newCategory.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        await query('INSERT IGNORE INTO gallery_categories (name, slug) VALUES (?, ?)', [newCategory, slug]);
+      }
+    }
+
     await query(
       'UPDATE media_gallery SET title = ?, category = ?, image_url = ?, is_featured = ?, sort_order = ? WHERE id = ?',
       [newTitle, newCategory, image_url, newFeatured, newSort, id]
     );
 
+    const updated = await query('SELECT * FROM media_gallery WHERE id = ?', [id]);
+
     res.json({
       success: true,
       message: 'Gallery image updated successfully.',
-      image: {
+      image: updated[0] || {
         id: parseInt(id, 10),
         title: newTitle,
         category: newCategory,
@@ -1199,10 +1212,13 @@ router.post('/gallery/:id/replace-image', uploadGalleryMedia.single('image'), as
 
     await query('UPDATE media_gallery SET image_url = ? WHERE id = ?', [newUrl, id]);
 
+    const updated = await query('SELECT * FROM media_gallery WHERE id = ?', [id]);
+
     res.json({
       success: true,
       message: 'Gallery image replaced successfully.',
       image_url: newUrl,
+      image: updated[0] || { ...current, image_url: newUrl },
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to replace image: ' + err.message });

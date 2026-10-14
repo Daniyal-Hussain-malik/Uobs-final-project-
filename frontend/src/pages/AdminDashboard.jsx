@@ -1011,6 +1011,15 @@ export default function AdminDashboard() {
       if (res.success) {
         triggerToast(res.message || 'Gallery media saved successfully.');
         setGalleryImageModal(null);
+        if (res.image) {
+          setGalleryImagesList((prev) => {
+            if (mode === 'add') {
+              return [res.image, ...prev.filter((item) => item.id !== res.image.id)];
+            } else {
+              return prev.map((item) => (item.id === res.image.id ? { ...item, ...res.image } : item));
+            }
+          });
+        }
         loadGalleryImages();
         loadGalleryCats();
       }
@@ -1022,7 +1031,7 @@ export default function AdminDashboard() {
   };
 
   const handleExecuteReplaceImage = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!replaceImageModal) return;
     const { image, file, url } = replaceImageModal;
     if (!file && !url) {
@@ -1041,12 +1050,39 @@ export default function AdminDashboard() {
       }
 
       if (res.success) {
-        triggerToast('Image replaced successfully.');
+        triggerToast(res.message || 'Gallery image replaced successfully.');
         setReplaceImageModal(null);
+        setGalleryImagesList((prev) =>
+          prev.map((g) => (g.id === image.id ? { ...g, image_url: res.image_url || url, ...(res.image || {}) } : g))
+        );
         loadGalleryImages();
+        loadMediaLibrary();
       }
     } catch (err) {
-      triggerToast(err.message || 'Failed to replace image.');
+      triggerToast(err.message || 'Failed to replace image: ' + (err.message || 'Unknown error'));
+    } finally {
+      setUploadingGalleryItem(false);
+    }
+  };
+
+  const handleQuickReplaceFromMedia = async (mediaItem) => {
+    if (!replaceImageModal) return;
+    const { image } = replaceImageModal;
+    setUploadingGalleryItem(true);
+    try {
+      const res = await api.post(`/admin/gallery/${image.id}/replace-image`, { image_url: mediaItem.url });
+      if (res.success) {
+        triggerToast(res.message || 'Gallery image replaced successfully.');
+        setMediaPickerForGallery(false);
+        setReplaceImageModal(null);
+        setGalleryImagesList((prev) =>
+          prev.map((g) => (g.id === image.id ? { ...g, image_url: res.image_url || mediaItem.url, ...(res.image || {}) } : g))
+        );
+        loadGalleryImages();
+        loadMediaLibrary();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to replace image: ' + err.message);
     } finally {
       setUploadingGalleryItem(false);
     }
@@ -1945,7 +1981,8 @@ export default function AdminDashboard() {
                         {isVideoMedia(img.image_url) ? (
                           <div className="relative w-full h-full bg-[#151915]">
                             <video
-                              src={img.image_url}
+                              src={getMediaUrl(img.image_url)}
+                              onError={handleMediaError}
                               className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition"
                               muted
                               preload="metadata"
@@ -1958,7 +1995,8 @@ export default function AdminDashboard() {
                           </div>
                         ) : (
                           <img
-                            src={img.image_url}
+                            src={getMediaUrl(img.image_url)}
+                            onError={handleMediaError}
                             alt={img.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           />
@@ -5000,7 +5038,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <form onSubmit={handleSaveGalleryImage} className="space-y-4 text-xs">
+              <form onSubmit={handleSaveGalleryImage} noValidate className="space-y-4 text-xs">
                 {/* Media Upload or Preview */}
                 <div>
                   <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
@@ -5037,10 +5075,10 @@ export default function AdminDashboard() {
 
                     {/* Or URL input */}
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-[#A8AD94] uppercase font-bold shrink-0">Or URL:</span>
+                      <span className="text-[10px] text-[#A8AD94] uppercase font-bold shrink-0">Or URL / Path:</span>
                       <input
-                        type="url"
-                        placeholder="https://... or paste photo/video URL"
+                        type="text"
+                        placeholder="https://... or /uploads/rooms/... or paste media path"
                         value={galleryImageModal.image.image_url || ''}
                         onChange={(e) =>
                           setGalleryImageModal((prev) => ({
@@ -5233,7 +5271,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <form onSubmit={handleExecuteReplaceImage} className="space-y-4 text-xs">
+              <form onSubmit={handleExecuteReplaceImage} noValidate className="space-y-4 text-xs">
                 {/* Comparison Grid */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -5336,11 +5374,22 @@ export default function AdminDashboard() {
                     </button>
                   </div>
 
+                  {replaceImageModal.url && (
+                    <div className="px-3 py-2 rounded-xl bg-[#E3B94E]/10 border border-[#E3B94E]/30 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-[#E3B94E] font-medium truncate">
+                        Selected: <code className="font-mono">{replaceImageModal.url}</code>
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-bold shrink-0">
+                        Ready to Replace
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-[#A8AD94] uppercase font-bold shrink-0">Or New URL:</span>
+                    <span className="text-[10px] text-[#A8AD94] uppercase font-bold shrink-0">Or New URL / Path:</span>
                     <input
-                      type="url"
-                      placeholder="https://... new image URL or path"
+                      type="text"
+                      placeholder="https://... or /uploads/rooms/... or paste media path"
                       value={replaceImageModal.url || ''}
                       onChange={(e) =>
                         setReplaceImageModal((prev) => ({
@@ -5927,14 +5976,21 @@ export default function AdminDashboard() {
 
         {/* ================= MODAL: PICK MEDIA FOR GALLERY ================= */}
         {mediaPickerForGallery && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#232A23] max-w-4xl w-full p-6 rounded-3xl border border-white/20 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
               <div className="flex justify-between items-center border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
                   <Film className="w-5 h-5 text-[#E3B94E]" />
-                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
-                    {mediaPickerTarget === 'gallery_replace' ? 'Select Replacement from Media Files' : 'Select Photo or Video for Gallery'}
-                  </h3>
+                  <div>
+                    <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                      {mediaPickerTarget === 'gallery_replace' ? 'Select Replacement from Media Files' : 'Select Photo or Video for Gallery'}
+                    </h3>
+                    <p className="text-[11px] text-[#A8AD94]">
+                      {mediaPickerTarget === 'gallery_replace'
+                        ? 'Click an image to select it for the replace form, or click "Replace Now" to replace instantly.'
+                        : 'Click any photo or video to import it into your gallery upload form.'}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -5964,11 +6020,10 @@ export default function AdminDashboard() {
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {mediaLibraryList.map((item) => (
-                    <button
+                    <div
                       key={item.url}
-                      type="button"
                       onClick={() => {
-                        if (mediaPickerTarget === 'gallery_replace' || replaceImageModal) {
+                        if (mediaPickerTarget === 'gallery_replace') {
                           setReplaceImageModal((prev) => ({
                             ...(prev || {}),
                             file: null,
@@ -5992,7 +6047,7 @@ export default function AdminDashboard() {
                         }
                         setMediaPickerForGallery(false);
                       }}
-                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition cursor-pointer flex flex-col justify-between"
                     >
                       <div className="aspect-square bg-black/40 overflow-hidden relative flex items-center justify-center">
                         {item.type === 'video' ? (
@@ -6020,10 +6075,26 @@ export default function AdminDashboard() {
                           {item.size}
                         </span>
                       </div>
-                      <div className="p-2">
+                      <div className="p-2.5 space-y-1.5">
                         <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
+                        {mediaPickerTarget === 'gallery_replace' ? (
+                          <div className="pt-1 border-t border-white/5 flex items-center justify-between gap-1">
+                            <span className="text-[9px] text-[#A8AD94]">Select or:</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleQuickReplaceFromMedia(item);
+                              }}
+                              disabled={uploadingGalleryItem}
+                              className="px-2 py-0.5 rounded-lg bg-[#E3B94E] hover:bg-[#c99f36] text-[#232A23] font-bold text-[10px] transition shrink-0"
+                            >
+                              Replace Now
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
