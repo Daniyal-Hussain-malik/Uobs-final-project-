@@ -10,7 +10,8 @@ import {
   ExternalLink, BedDouble, CheckCircle, FileText,
   Upload, Image, Utensils, Compass, Layers, CreditCard, Building, Printer, RefreshCw,
   Film, Play, Video, Folder, Copy, CheckCircle2, Maximize2, Sliders, UserCheck, Briefcase,
-  ChevronLeft, ChevronRight, FolderOpen, Sun, Flame, Coffee, Wifi, Bath, Tv, Waves, Heart, Wind, Clock, ShieldCheck
+  ChevronLeft, ChevronRight, FolderOpen, Sun, Flame, Coffee, Wifi, Bath, Tv, Waves, Heart, Wind, Clock, ShieldCheck,
+  Menu, LayoutDashboard, Home
 } from 'lucide-react';
 
 const isVideoMedia = (url) => {
@@ -47,6 +48,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const tabsTrackRef = useRef(null);
 
   // Tab Data States
@@ -1253,144 +1255,258 @@ export default function AdminDashboard() {
 
   const m = data?.metrics || {};
 
-  return (
-    <div className="min-h-screen bg-[#2C332C] text-[#EAEBE8] py-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-        
-        {/* Toast Alert */}
-        {toastMsg && (
-          <div className="fixed bottom-6 right-6 z-50 bg-[#232A23] border border-[#787C68] text-[#EAEBE8] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 text-xs">
-            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span>{toastMsg}</span>
-          </div>
-        )}
+  const navGroups = [
+    {
+      title: 'OPERATIONS',
+      items: [
+        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'bookings', label: 'Room Stays', icon: BedDouble, badge: m.total_bookings },
+        { id: 'rooms', label: 'Rooms & Suites', icon: Building, badge: m.active_rooms },
+        { id: 'amenities_mgmt', label: 'Amenities', icon: Sparkles, badge: amenitiesList.length || null },
+      ],
+    },
+    {
+      title: 'EXPERIENCES & DINING',
+      items: [
+        { id: 'experiences_mgmt', label: 'Resort Experiences', icon: Compass, badge: experiencesList.length || null },
+        { id: 'exp_bookings', label: 'Experience Bookings', icon: Calendar, badge: expBookingsList.length || null },
+        { id: 'dining_items', label: 'Dining Deals & Menus', icon: Utensils, badge: diningItemsList.length || null },
+        { id: 'dining_bookings', label: 'Dining Reservations', icon: Coffee, badge: diningBookingsList.length || null },
+      ],
+    },
+    {
+      title: 'MEDIA & BRANDING',
+      items: [
+        { id: 'gallery_mgmt', label: 'Gallery & Media', icon: Image, badge: galleryImagesList.length || null },
+        { id: 'media_library', label: 'Media Files', icon: Film, badge: mediaLibraryList.length || null },
+        { id: 'hero_settings', label: 'Hero Showcase', icon: Sliders },
+        { id: 'team_mgmt', label: 'Resort Team', icon: Users, badge: teamMembersList.length || null },
+      ],
+    },
+    {
+      title: 'SETTINGS & DIRECTORY',
+      items: [
+        { id: 'categories', label: 'Categories', icon: Layers, badge: categoriesList.length || null },
+        { id: 'payment_accounts', label: 'Payment Accounts', icon: CreditCard, badge: paymentAccountsList.length || null },
+        { id: 'users', label: 'Guest Directory', icon: UserCheck, badge: usersList.length || null },
+        { id: 'offers', label: 'Promo Offers', icon: Tag, badge: offersList.length || null },
+        { id: 'reviews', label: 'Guest Reviews', icon: Star, badge: m.pending_reviews > 0 ? `${m.pending_reviews} new` : (reviewsList.length || null) },
+      ],
+    },
+  ];
 
-        {/* Header & Tabs */}
-        <div className="space-y-4 border-b border-white/10 pb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  const allTabsList = navGroups.flatMap((g) => g.items);
+  const currentTabObj = allTabsList.find((t) => t.id === activeTab) || allTabsList[0];
+
+  return (
+    <div className="min-h-screen bg-[#1F241F] text-[#EAEBE8] flex flex-col lg:flex-row">
+      {/* Toast Alert */}
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 z-[100] bg-[#232A23] border border-[#787C68] text-[#EAEBE8] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 text-xs animate-fadeIn">
+          <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* Mobile Drawer Backdrop */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden transition-opacity"
+        />
+      )}
+
+      {/* ================= SIDEBAR NAVIGATION ================= */}
+      <aside
+        className={`fixed lg:sticky top-0 left-0 z-50 lg:z-30 h-screen w-72 xl:w-80 bg-[#161B16] border-r border-white/10 flex flex-col transition-transform duration-300 ease-in-out shrink-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        {/* Brand Header */}
+        <div className="p-5 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#E3B94E] to-[#787C68] flex items-center justify-center text-[#232A23] font-bold shadow-lg">
+              <Building className="w-5 h-5 text-[#161B16]" />
+            </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-[#A8AD94] uppercase tracking-widest font-semibold">
-                  Resort Executive Console
+              <div className="flex items-center gap-1.5">
+                <span className="font-display font-bold text-base text-[#EAEBE8] tracking-wide">
+                  OASIS RESORT
                 </span>
-                <span className="text-[10px] bg-[#E3B94E]/20 text-[#E3B94E] px-2 py-0.5 rounded-full font-mono font-bold">
+                <span className="text-[9px] bg-[#E3B94E]/20 text-[#E3B94E] px-1.5 py-0.5 rounded font-mono font-bold">
                   ADMIN
                 </span>
               </div>
-              <h1 className="font-script text-4xl sm:text-5xl text-[#EAEBE8] mt-1">
-                General Manager Dashboard
-              </h1>
-              <p className="text-xs text-[#A8AD94]">Central control for reservations, guest directory, rooms &amp; suites, promo offers, amenities, and verified reviews.</p>
-            </div>
-
-            {/* Quick Prev / Next Tab Switcher */}
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  const tabs = [
-                    'overview', 'bookings', 'rooms', 'amenities_mgmt', 'experiences_mgmt',
-                    'exp_bookings', 'dining_items', 'dining_bookings', 'gallery_mgmt',
-                    'media_library', 'hero_settings', 'team_mgmt', 'categories',
-                    'payment_accounts', 'users', 'offers', 'reviews'
-                  ];
-                  const idx = tabs.indexOf(activeTab);
-                  if (idx > 0) setActiveTab(tabs[idx - 1]);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[#A8AD94] hover:text-[#EAEBE8] text-xs font-semibold flex items-center gap-1 transition border border-white/10"
-                title="Open previous tab"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Prev Tab</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const tabs = [
-                    'overview', 'bookings', 'rooms', 'amenities_mgmt', 'experiences_mgmt',
-                    'exp_bookings', 'dining_items', 'dining_bookings', 'gallery_mgmt',
-                    'media_library', 'hero_settings', 'team_mgmt', 'categories',
-                    'payment_accounts', 'users', 'offers', 'reviews'
-                  ];
-                  const idx = tabs.indexOf(activeTab);
-                  if (idx < tabs.length - 1) setActiveTab(tabs[idx + 1]);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-[#E3B94E]/20 hover:bg-[#E3B94E] text-[#E3B94E] hover:text-[#232A23] text-xs font-bold flex items-center gap-1 transition"
-                title="Open next tab"
-              >
-                <span>Next Tab</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              <p className="text-[10px] text-[#A8AD94] tracking-wider uppercase font-semibold">
+                Skardu • Executive Console
+              </p>
             </div>
           </div>
 
-          {/* Tab Slider Track with Left & Right Arrows */}
-          <div className="relative flex items-center bg-[#232A23] border border-white/10 rounded-2xl p-1.5 shadow-xl">
-            <button
-              type="button"
-              onClick={() => {
-                if (tabsTrackRef.current) {
-                  tabsTrackRef.current.scrollBy({ left: -260, behavior: 'smooth' });
-                }
-              }}
-              className="w-8 h-9 rounded-xl bg-white/5 hover:bg-white/15 text-[#A8AD94] hover:text-[#EAEBE8] flex items-center justify-center shrink-0 transition"
-              title="Slide tabs left"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            <div
-              ref={tabsTrackRef}
-              className="flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth px-2 py-0.5"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              {[
-                { id: 'overview', label: 'Overview' },
-                { id: 'bookings', label: 'Room Stays' },
-                { id: 'rooms', label: 'Rooms & Suites' },
-                { id: 'amenities_mgmt', label: 'Amenities' },
-                { id: 'experiences_mgmt', label: 'Resort Experiences' },
-                { id: 'exp_bookings', label: 'Experience Bookings' },
-                { id: 'dining_items', label: 'Dining Deals & Menus' },
-                { id: 'dining_bookings', label: 'Dining Bookings' },
-                { id: 'gallery_mgmt', label: 'Gallery & Media' },
-                { id: 'media_library', label: 'Media Files' },
-                { id: 'hero_settings', label: 'Hero Section' },
-                { id: 'team_mgmt', label: 'Resort Team' },
-                { id: 'categories', label: 'Categories' },
-                { id: 'payment_accounts', label: 'Payment Accounts' },
-                { id: 'users', label: 'Guests' },
-                { id: 'offers', label: 'Offers' },
-                { id: 'reviews', label: 'Reviews' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all duration-300 flex items-center gap-1.5 shrink-0 ${
-                    activeTab === tab.id
-                      ? 'bg-[#787C68] text-[#232A23] shadow-lg font-bold scale-[1.02]'
-                      : 'text-[#A8AD94] hover:text-[#EAEBE8] hover:bg-white/5'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (tabsTrackRef.current) {
-                  tabsTrackRef.current.scrollBy({ left: 260, behavior: 'smooth' });
-                }
-              }}
-              className="w-8 h-9 rounded-xl bg-white/5 hover:bg-white/15 text-[#A8AD94] hover:text-[#EAEBE8] flex items-center justify-center shrink-0 transition"
-              title="Slide tabs right"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1.5 rounded-xl text-[#A8AD94] hover:text-white hover:bg-white/10 transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
+
+        {/* Live Status Pill */}
+        <div className="px-5 py-2.5 bg-black/20 border-b border-white/5 flex items-center justify-between text-[11px]">
+          <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            System Live &amp; Connected
+          </span>
+          <span className="text-[10px] text-[#A8AD94] font-mono">Katpana Desert</span>
+        </div>
+
+        {/* Scrollable Navigation Groups */}
+        <nav className="flex-1 overflow-y-auto px-3.5 py-4 space-y-5 scrollbar-thin">
+          {navGroups.map((group) => (
+            <div key={group.title} className="space-y-1">
+              <span className="px-3 text-[10px] font-bold uppercase tracking-widest text-[#787C68] block">
+                {group.title}
+              </span>
+              <div className="space-y-0.5">
+                {group.items.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
+                        isActive
+                          ? 'bg-[#787C68] text-[#232A23] font-bold shadow-md scale-[1.01]'
+                          : 'text-[#A8AD94] hover:text-[#EAEBE8] hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#232A23]' : 'text-[#E3B94E]'}`} />
+                        <span className="truncate">{tab.label}</span>
+                      </div>
+                      {tab.badge !== undefined && tab.badge !== null && tab.badge !== '' ? (
+                        <span
+                          className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md shrink-0 ml-1.5 ${
+                            isActive
+                              ? 'bg-[#232A23]/25 text-[#232A23]'
+                              : 'bg-white/10 text-[#EAEBE8]'
+                          }`}
+                        >
+                          {tab.badge}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-white/10 bg-[#121612]/60 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 truncate">
+              <div className="w-8 h-8 rounded-full bg-[#E3B94E]/20 text-[#E3B94E] flex items-center justify-center font-bold text-xs shrink-0 border border-[#E3B94E]/30">
+                GM
+              </div>
+              <div className="truncate">
+                <p className="text-xs font-bold text-[#EAEBE8] truncate">General Manager</p>
+                <p className="text-[10px] text-[#A8AD94] truncate">admin@oasisresort.com</p>
+              </div>
+            </div>
+          </div>
+
+          <a
+            href="/"
+            target="_blank"
+            rel="noreferrer"
+            className="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-[#E3B94E]/15 hover:border-[#E3B94E]/30 text-[#A8AD94] hover:text-[#E3B94E] text-xs font-semibold flex items-center justify-center gap-1.5 border border-white/10 transition"
+          >
+            <Home className="w-3.5 h-3.5 text-[#E3B94E]" />
+            <span>View Live Website</span>
+            <ExternalLink className="w-3 h-3 ml-auto opacity-60" />
+          </a>
+        </div>
+      </aside>
+
+      {/* ================= MAIN WORKSPACE ================= */}
+      <div className="flex-1 min-w-0 flex flex-col bg-[#222722]">
+        {/* Top Header Bar for Main Content */}
+        <header className="sticky top-0 z-30 bg-[#161B16]/95 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-[#EAEBE8] border border-white/10 transition shrink-0"
+              title="Open Navigation Menu"
+            >
+              <Menu className="w-5 h-5 text-[#E3B94E]" />
+            </button>
+
+            <div className="truncate">
+              <div className="flex items-center gap-2 text-[10px] text-[#A8AD94] uppercase tracking-wider font-semibold">
+                <span>Resort Console</span>
+                <span className="text-white/20">•</span>
+                <span className="text-[#E3B94E] font-bold truncate">{currentTabObj?.label}</span>
+              </div>
+              <h1 className="font-display text-lg sm:text-xl font-bold text-[#EAEBE8] truncate">
+                {currentTabObj?.label}
+              </h1>
+            </div>
+          </div>
+
+          {/* Quick Prev / Next Navigator & Website Link */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                const idx = allTabsList.findIndex((t) => t.id === activeTab);
+                if (idx > 0) setActiveTab(allTabsList[idx - 1].id);
+              }}
+              disabled={allTabsList.findIndex((t) => t.id === activeTab) === 0}
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 text-[#A8AD94] hover:text-[#EAEBE8] text-xs font-semibold flex items-center gap-1 transition border border-white/10"
+              title="Previous Tab"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Prev</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const idx = allTabsList.findIndex((t) => t.id === activeTab);
+                if (idx < allTabsList.length - 1) setActiveTab(allTabsList[idx + 1].id);
+              }}
+              disabled={allTabsList.findIndex((t) => t.id === activeTab) === allTabsList.length - 1}
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#E3B94E]/20 hover:bg-[#E3B94E] disabled:opacity-30 text-[#E3B94E] hover:text-[#232A23] text-xs font-bold flex items-center gap-1 transition"
+              title="Next Tab"
+            >
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+
+            <a
+              href="/"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[#A8AD94] hover:text-[#EAEBE8] text-xs font-semibold border border-white/10 transition ml-1"
+              title="View live website"
+            >
+              <Home className="w-3.5 h-3.5 text-[#E3B94E]" />
+              <span>Live Site</span>
+              <ExternalLink className="w-3 h-3 opacity-60" />
+            </a>
+          </div>
+        </header>
+
+        {/* Tab Content Body */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl w-full mx-auto">
 
         {/* ================= TAB 1: OVERVIEW METRICS ================= */}
         {activeTab === 'overview' && (
@@ -6739,6 +6855,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        </main>
       </div>
     </div>
   );
