@@ -21,7 +21,14 @@ router.get('/home', async (req, res) => {
     const offers = await query('SELECT * FROM offers WHERE is_active = 1 AND valid_until >= CURDATE() LIMIT 4');
     const gallery = await query('SELECT * FROM media_gallery WHERE is_featured = 1 ORDER BY sort_order ASC LIMIT 6');
     const posts = await query('SELECT * FROM posts WHERE is_published = 1 ORDER BY published_at DESC LIMIT 3');
-    const experiences = await query('SELECT * FROM add_on_services WHERE is_available = 1 LIMIT 4');
+    let experiences = await query('SELECT * FROM experiences WHERE is_active = 1 ORDER BY sort_order ASC, id ASC LIMIT 6');
+    if (!experiences || experiences.length === 0) {
+      experiences = await query('SELECT * FROM add_on_services WHERE is_available = 1 LIMIT 6');
+    }
+    let amenities = [];
+    try {
+      amenities = await query('SELECT * FROM amenities WHERE is_active = 1 ORDER BY is_highlight DESC, sort_order ASC, id ASC');
+    } catch (e) {}
 
     const processedRooms = rooms.map(r => ({
       ...r,
@@ -59,6 +66,7 @@ router.get('/home', async (req, res) => {
         gallery,
         posts,
         experiences,
+        amenities,
       },
     });
   } catch (err) {
@@ -124,6 +132,34 @@ router.get('/experiences', async (req, res) => {
     res.json({ success: true, experiences });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to load experiences.' });
+  }
+});
+
+// Single Experience detail by ID
+router.get('/experiences/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let exp = await query('SELECT * FROM experiences WHERE id = ?', [id]);
+    if (!exp || exp.length === 0) {
+      exp = await query('SELECT * FROM add_on_services WHERE id = ?', [id]);
+    }
+    if (!exp || exp.length === 0) {
+      return res.status(404).json({ success: false, message: 'Experience not found.' });
+    }
+    const related = await query('SELECT * FROM experiences WHERE is_active = 1 AND id != ? ORDER BY sort_order ASC LIMIT 3', [id]);
+    res.json({ success: true, experience: exp[0], related });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to load experience details: ' + err.message });
+  }
+});
+
+// Public Amenities Endpoint
+router.get('/amenities', async (req, res) => {
+  try {
+    let amenities = await query('SELECT * FROM amenities WHERE is_active = 1 ORDER BY sort_order ASC, id ASC');
+    res.json({ success: true, amenities });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to load amenities.' });
   }
 });
 

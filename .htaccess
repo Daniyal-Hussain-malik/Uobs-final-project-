@@ -1,0 +1,55 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # 1. Direct access to existing backend/uploads files when requested via /uploads/
+  RewriteCond %{DOCUMENT_ROOT}/backend/uploads/$1 -f
+  RewriteRule ^uploads/(.*)$ backend/uploads/$1 [L]
+
+  # 2. Direct access to existing uploads files if in root /uploads/
+  RewriteCond %{DOCUMENT_ROOT}/uploads/$1 -f
+  RewriteRule ^uploads/(.*)$ uploads/$1 [L]
+
+  # 3. Direct access to existing backend/public/uploads files
+  RewriteCond %{DOCUMENT_ROOT}/backend/public/uploads/$1 -f
+  RewriteRule ^uploads/(.*)$ backend/public/uploads/$1 [L]
+
+  # 4. Direct access to existing frontend/dist/uploads files
+  RewriteCond %{DOCUMENT_ROOT}/frontend/dist/uploads/$1 -f
+  RewriteRule ^uploads/(.*)$ frontend/dist/uploads/$1 [L]
+
+  # 5. Direct access to frontend static files in backend/public/
+  RewriteCond %{DOCUMENT_ROOT}/backend/public/$1 -f
+  RewriteRule ^(.*)$ backend/public/$1 [L]
+
+  # 6. Direct access to frontend static files in frontend/dist/
+  RewriteCond %{DOCUMENT_ROOT}/frontend/dist/$1 -f
+  RewriteRule ^(.*)$ frontend/dist/$1 [L]
+
+  # 7. Do not rewrite API requests (let Node.js handle /api)
+  RewriteRule ^api/ - [L]
+
+  # 8. Do not rewrite existing files or directories
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # 9. Single Page App fallback for React Router
+  RewriteCond %{DOCUMENT_ROOT}/backend/public/index.html -f
+  RewriteRule . /backend/public/index.html [L]
+
+  RewriteCond %{DOCUMENT_ROOT}/frontend/dist/index.html -f
+  RewriteRule . /frontend/dist/index.html [L]
+
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# Caching for images & media
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType video/mp4 "access plus 1 month"
+  ExpiresByType video/webm "access plus 1 month"
+</IfModule>

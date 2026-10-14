@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api/client';
 import { BookingStatusBadge, PaymentStatusBadge } from '../components/StatusBadge';
 import ServiceInvoiceModal from '../components/ServiceInvoiceModal';
+import { getMediaUrl, handleMediaError } from '../utils/media';
 import {
   TrendingUp, DollarSign, Calendar, Users, Star,
   Shield, Check, Trash2, Plus, Sparkles, AlertCircle,
   ToggleLeft, ToggleRight, Search, Edit3, X, Eye, Tag,
   ExternalLink, BedDouble, CheckCircle, FileText,
   Upload, Image, Utensils, Compass, Layers, CreditCard, Building, Printer, RefreshCw,
-  Film, Play, Video, Folder, Copy, CheckCircle2, Maximize2, Sliders, UserCheck, Briefcase
+  Film, Play, Video, Folder, Copy, CheckCircle2, Maximize2, Sliders, UserCheck, Briefcase,
+  ChevronLeft, ChevronRight, FolderOpen, Sun, Flame, Coffee, Wifi, Bath, Tv, Waves, Heart, Wind, Clock, ShieldCheck
 } from 'lucide-react';
 
 const isVideoMedia = (url) => {
@@ -16,11 +18,36 @@ const isVideoMedia = (url) => {
   return /\.(mp4|mov|webm|m4v|ogv|mkv|avi|3gp)($|\?)/i.test(String(url));
 };
 
+const renderAmenityIcon = (iconName, className = 'w-5 h-5') => {
+  const norm = (iconName || '').toLowerCase().trim();
+  switch (norm) {
+    case 'wifi': return <Wifi className={className} />;
+    case 'coffee': return <Coffee className={className} />;
+    case 'flame': return <Flame className={className} />;
+    case 'bath': return <Bath className={className} />;
+    case 'tv': return <Tv className={className} />;
+    case 'waves': return <Waves className={className} />;
+    case 'sun': return <Sun className={className} />;
+    case 'heart': return <Heart className={className} />;
+    case 'wind': return <Wind className={className} />;
+    case 'clock': return <Clock className={className} />;
+    case 'shieldcheck':
+    case 'shield': return <ShieldCheck className={className} />;
+    case 'beddouble':
+    case 'bed': return <BedDouble className={className} />;
+    case 'utensils': return <Utensils className={className} />;
+    case 'compass': return <Compass className={className} />;
+    case 'sparkles':
+    default: return <Sparkles className={className} />;
+  }
+};
+
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState('');
+  const tabsTrackRef = useRef(null);
 
   // Tab Data States
   const [usersList, setUsersList] = useState([]);
@@ -34,9 +61,13 @@ export default function AdminDashboard() {
   const [expBookingsList, setExpBookingsList] = useState([]);
   const [diningItemsList, setDiningItemsList] = useState([]);
   const [experiencesList, setExperiencesList] = useState([]);
+  const [amenitiesList, setAmenitiesList] = useState([]);
+  const [loadingAmenities, setLoadingAmenities] = useState(false);
   const [galleryImagesList, setGalleryImagesList] = useState([]);
   const [galleryCatsList, setGalleryCatsList] = useState([]);
   const [selectedGalleryCatFilter, setSelectedGalleryCatFilter] = useState('all');
+  const [amenitySearchTerm, setAmenitySearchTerm] = useState('');
+  const [amenityCategoryFilter, setAmenityCategoryFilter] = useState('all');
 
   // Search & Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,6 +82,11 @@ export default function AdminDashboard() {
   const [paymentAccountModal, setPaymentAccountModal] = useState(null); // null | { mode: 'add' | 'edit', account: {} }
   const [diningItemModal, setDiningItemModal] = useState(null); // null | { mode: 'add' | 'edit', item: {} }
   const [experienceModal, setExperienceModal] = useState(null); // null | { mode: 'add' | 'edit', exp: {} }
+  const [amenityModal, setAmenityModal] = useState(null); // null | { mode: 'add' | 'edit', amenity: {} }
+  const [savingAmenity, setSavingAmenity] = useState(false);
+  const [mediaPickerForAmenity, setMediaPickerForAmenity] = useState(false);
+  const [mediaPickerForExperience, setMediaPickerForExperience] = useState(false);
+  const [galleryPickerForExperience, setGalleryPickerForExperience] = useState(false);
   const [galleryCatModal, setGalleryCatModal] = useState(null); // null | { mode: 'add' | 'edit', cat: {} }
   const [galleryImageModal, setGalleryImageModal] = useState(null); // null | { mode: 'add' | 'edit', image: {}, file: null, preview: '' }
   const [replaceImageModal, setReplaceImageModal] = useState(null); // null | { image: {}, file: null, preview: '', url: '' }
@@ -101,6 +137,7 @@ export default function AdminDashboard() {
   const [galleryUrlInput, setGalleryUrlInput] = useState('');
   const [uploadingDiningImg, setUploadingDiningImg] = useState(false);
   const [uploadingExpImg, setUploadingExpImg] = useState(false);
+  const [uploadingAmenityImg, setUploadingAmenityImg] = useState(false);
 
   const triggerToast = (msg) => {
     setToastMsg(msg);
@@ -276,6 +313,68 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadAmenities = async () => {
+    setLoadingAmenities(true);
+    try {
+      const res = await api.get('/admin/amenities');
+      if (res.success) setAmenitiesList(res.amenities || []);
+    } catch (err) {
+      console.error('Failed to load amenities:', err);
+    } finally {
+      setLoadingAmenities(false);
+    }
+  };
+
+  const handleSaveAmenity = async (e) => {
+    e.preventDefault();
+    if (!amenityModal) return;
+    const { mode, amenity } = amenityModal;
+    setSavingAmenity(true);
+    try {
+      let res;
+      if (mode === 'add') {
+        res = await api.post('/admin/amenities', amenity);
+      } else {
+        res = await api.put(`/admin/amenities/${amenity.id}`, amenity);
+      }
+      if (res.success) {
+        triggerToast(res.message);
+        setAmenityModal(null);
+        loadAmenities();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to save amenity.');
+    } finally {
+      setSavingAmenity(false);
+    }
+  };
+
+  const handleDeleteAmenity = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this amenity?')) return;
+    try {
+      const res = await api.delete(`/admin/amenities/${id}`);
+      if (res.success) {
+        triggerToast(res.message);
+        loadAmenities();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to delete amenity.');
+    }
+  };
+
+  const handleToggleAmenity = async (amenity) => {
+    try {
+      const nextActive = amenity.is_active ? 0 : 1;
+      const res = await api.put(`/admin/amenities/${amenity.id}`, { is_active: nextActive });
+      if (res.success) {
+        triggerToast(`Amenity ${nextActive ? 'activated' : 'deactivated'}.`);
+        loadAmenities();
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to update status.');
+    }
+  };
+
   useEffect(() => {
     loadDashboard();
     loadCategories();
@@ -286,6 +385,7 @@ export default function AdminDashboard() {
     if (activeTab === 'users') loadUsers();
     if (activeTab === 'bookings') loadBookings();
     if (activeTab === 'rooms') { loadRooms(); loadCategories(); }
+    if (activeTab === 'amenities_mgmt') { loadAmenities(); loadMediaLibrary(); }
     if (activeTab === 'categories') loadCategories();
     if (activeTab === 'gallery_mgmt') { loadGalleryImages(); loadGalleryCats(); }
     if (activeTab === 'media_library') { loadMediaLibrary(); loadGalleryCats(); }
@@ -805,6 +905,28 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUploadAmenityImage = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingAmenityImg(true);
+    try {
+      const fd = new FormData();
+      fd.append('files', file);
+      const res = await api.post('/admin/upload-media', fd);
+      if (res.success && res.url) {
+        setAmenityModal((prev) => ({
+          ...prev,
+          amenity: { ...prev.amenity, image_url: res.url },
+        }));
+        triggerToast('Amenity image uploaded successfully.');
+      }
+    } catch (err) {
+      triggerToast(err.message || 'Failed to upload image.');
+    } finally {
+      setUploadingAmenityImg(false);
+    }
+  };
+
   // ================= GALLERY & CATEGORIES CRUD =================
   const handleSaveGalleryCategory = async (e) => {
     e.preventDefault();
@@ -1080,54 +1202,129 @@ export default function AdminDashboard() {
         )}
 
         {/* Header & Tabs */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-white/10 pb-6">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-[#A8AD94] uppercase tracking-widest font-semibold">
-                Resort Executive Console
-              </span>
-              <span className="text-[10px] bg-[#E3B94E]/20 text-[#E3B94E] px-2 py-0.5 rounded-full font-mono font-bold">
-                ADMIN
-              </span>
+        <div className="space-y-4 border-b border-white/10 pb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-[#A8AD94] uppercase tracking-widest font-semibold">
+                  Resort Executive Console
+                </span>
+                <span className="text-[10px] bg-[#E3B94E]/20 text-[#E3B94E] px-2 py-0.5 rounded-full font-mono font-bold">
+                  ADMIN
+                </span>
+              </div>
+              <h1 className="font-script text-4xl sm:text-5xl text-[#EAEBE8] mt-1">
+                General Manager Dashboard
+              </h1>
+              <p className="text-xs text-[#A8AD94]">Central control for reservations, guest directory, rooms &amp; suites, promo offers, amenities, and verified reviews.</p>
             </div>
-            <h1 className="font-script text-4xl sm:text-5xl text-[#EAEBE8] mt-1">
-              General Manager Dashboard
-            </h1>
-            <p className="text-xs text-[#A8AD94]">Central control for reservations, guest directory, rooms &amp; suites, promo offers, and verified reviews.</p>
+
+            {/* Quick Prev / Next Tab Switcher */}
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  const tabs = [
+                    'overview', 'bookings', 'rooms', 'amenities_mgmt', 'experiences_mgmt',
+                    'exp_bookings', 'dining_items', 'dining_bookings', 'gallery_mgmt',
+                    'media_library', 'hero_settings', 'team_mgmt', 'categories',
+                    'payment_accounts', 'users', 'offers', 'reviews'
+                  ];
+                  const idx = tabs.indexOf(activeTab);
+                  if (idx > 0) setActiveTab(tabs[idx - 1]);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[#A8AD94] hover:text-[#EAEBE8] text-xs font-semibold flex items-center gap-1 transition border border-white/10"
+                title="Open previous tab"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Prev Tab</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const tabs = [
+                    'overview', 'bookings', 'rooms', 'amenities_mgmt', 'experiences_mgmt',
+                    'exp_bookings', 'dining_items', 'dining_bookings', 'gallery_mgmt',
+                    'media_library', 'hero_settings', 'team_mgmt', 'categories',
+                    'payment_accounts', 'users', 'offers', 'reviews'
+                  ];
+                  const idx = tabs.indexOf(activeTab);
+                  if (idx < tabs.length - 1) setActiveTab(tabs[idx + 1]);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-[#E3B94E]/20 hover:bg-[#E3B94E] text-[#E3B94E] hover:text-[#232A23] text-xs font-bold flex items-center gap-1 transition"
+                title="Open next tab"
+              >
+                <span>Next Tab</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-[#232A23] border border-white/10 p-1.5 rounded-2xl">
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'bookings', label: 'Room Stays' },
-              { id: 'rooms', label: 'Rooms & Suites' },
-              { id: 'media_library', label: 'Media Files' },
-              { id: 'hero_settings', label: 'Hero Section' },
-              { id: 'team_mgmt', label: 'Resort Team' },
-              { id: 'gallery_mgmt', label: 'Gallery & Media' },
-              { id: 'categories', label: 'Categories' },
-              { id: 'payment_accounts', label: 'Payment Accounts' },
-              { id: 'dining_items', label: 'Dining Deals & Menus' },
-              { id: 'dining_bookings', label: 'Dining Bookings' },
-              { id: 'experiences_mgmt', label: 'Resort Experiences' },
-              { id: 'exp_bookings', label: 'Experiences Bookings' },
-              { id: 'users', label: 'Guests' },
-              { id: 'offers', label: 'Offers' },
-              { id: 'reviews', label: 'Reviews' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
-                  activeTab === tab.id
-                    ? 'bg-[#787C68] text-[#232A23] shadow-md font-bold'
-                    : 'text-[#A8AD94] hover:text-[#EAEBE8]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* Tab Slider Track with Left & Right Arrows */}
+          <div className="relative flex items-center bg-[#232A23] border border-white/10 rounded-2xl p-1.5 shadow-xl">
+            <button
+              type="button"
+              onClick={() => {
+                if (tabsTrackRef.current) {
+                  tabsTrackRef.current.scrollBy({ left: -260, behavior: 'smooth' });
+                }
+              }}
+              className="w-8 h-9 rounded-xl bg-white/5 hover:bg-white/15 text-[#A8AD94] hover:text-[#EAEBE8] flex items-center justify-center shrink-0 transition"
+              title="Slide tabs left"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div
+              ref={tabsTrackRef}
+              className="flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth px-2 py-0.5"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {[
+                { id: 'overview', label: 'Overview' },
+                { id: 'bookings', label: 'Room Stays' },
+                { id: 'rooms', label: 'Rooms & Suites' },
+                { id: 'amenities_mgmt', label: 'Amenities' },
+                { id: 'experiences_mgmt', label: 'Resort Experiences' },
+                { id: 'exp_bookings', label: 'Experience Bookings' },
+                { id: 'dining_items', label: 'Dining Deals & Menus' },
+                { id: 'dining_bookings', label: 'Dining Bookings' },
+                { id: 'gallery_mgmt', label: 'Gallery & Media' },
+                { id: 'media_library', label: 'Media Files' },
+                { id: 'hero_settings', label: 'Hero Section' },
+                { id: 'team_mgmt', label: 'Resort Team' },
+                { id: 'categories', label: 'Categories' },
+                { id: 'payment_accounts', label: 'Payment Accounts' },
+                { id: 'users', label: 'Guests' },
+                { id: 'offers', label: 'Offers' },
+                { id: 'reviews', label: 'Reviews' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all duration-300 flex items-center gap-1.5 shrink-0 ${
+                    activeTab === tab.id
+                      ? 'bg-[#787C68] text-[#232A23] shadow-lg font-bold scale-[1.02]'
+                      : 'text-[#A8AD94] hover:text-[#EAEBE8] hover:bg-white/5'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (tabsTrackRef.current) {
+                  tabsTrackRef.current.scrollBy({ left: 260, behavior: 'smooth' });
+                }
+              }}
+              className="w-8 h-9 rounded-xl bg-white/5 hover:bg-white/15 text-[#A8AD94] hover:text-[#EAEBE8] flex items-center justify-center shrink-0 transition"
+              title="Slide tabs right"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -3318,6 +3515,211 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* ================= TAB: AMENITIES & FACILITIES MANAGEMENT (CRUD) ================= */}
+        {activeTab === 'amenities_mgmt' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#E3B94E]" />
+                  <h2 className="font-display text-2xl font-bold text-[#EAEBE8]">
+                    Resort Amenities &amp; Guest Facilities
+                  </h2>
+                </div>
+                <p className="text-xs text-[#A8AD94]">
+                  Manage luxury resort comforts, room amenities, and outdoor leisure features displayed across the Homepage and Rooms.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setAmenityModal({
+                    mode: 'add',
+                    amenity: {
+                      title: '',
+                      category: 'Resort Comforts',
+                      description: '',
+                      icon: 'Sparkles',
+                      image_url: '',
+                      is_highlight: 1,
+                      is_active: 1,
+                      sort_order: amenitiesList.length + 1,
+                    },
+                  })
+                }
+                className="px-5 py-2.5 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition shadow-lg shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Amenity</span>
+              </button>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="bg-[#232A23] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between shadow-lg">
+              <div className="flex-1 relative">
+                <Search className="w-4 h-4 text-[#A8AD94] absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search amenities by title or description..."
+                  value={amenitySearchTerm}
+                  onChange={(e) => setAmenitySearchTerm(e.target.value)}
+                  className="w-full bg-[#1E241E] border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-[#EAEBE8] focus:border-[#E3B94E] outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                {['all', 'Resort Comforts', 'In-Room Luxury', 'Outdoor & Nature', 'Wellness & Leisure', 'Dining & Culinary', 'Guest Services'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setAmenityCategoryFilter(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold tracking-wide whitespace-nowrap transition ${
+                      amenityCategoryFilter === cat
+                        ? 'bg-[#E3B94E] text-[#121813] font-bold'
+                        : 'bg-white/5 hover:bg-white/10 text-[#A8AD94]'
+                    }`}
+                  >
+                    {cat === 'all' ? 'All Categories' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Amenities Table */}
+            <div className="bg-[#232A23] border border-white/10 rounded-3xl p-6 overflow-x-auto shadow-xl">
+              {loadingAmenities ? (
+                <div className="py-12 text-center text-xs text-[#A8AD94] flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#E3B94E]" />
+                  <span>Loading resort amenities...</span>
+                </div>
+              ) : amenitiesList.length === 0 ? (
+                <div className="py-12 text-center space-y-3">
+                  <p className="text-sm text-[#A8AD94]">No amenities recorded yet.</p>
+                  <button
+                    onClick={() =>
+                      setAmenityModal({
+                        mode: 'add',
+                        amenity: {
+                          title: '',
+                          category: 'Resort Comforts',
+                          description: '',
+                          icon: 'Sparkles',
+                          image_url: '',
+                          is_highlight: 1,
+                          is_active: 1,
+                          sort_order: 1,
+                        },
+                      })
+                    }
+                    className="px-4 py-2 rounded-xl bg-[#787C68] text-[#232A23] font-bold text-xs"
+                  >
+                    Add First Amenity
+                  </button>
+                </div>
+              ) : (
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-[#A8AD94]">
+                      <th className="pb-3">Amenity</th>
+                      <th className="pb-3">Category</th>
+                      <th className="pb-3">Placement</th>
+                      <th className="pb-3">Sort Order</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {amenitiesList
+                      .filter((a) => {
+                        const matchSearch =
+                          !amenitySearchTerm ||
+                          a.title?.toLowerCase().includes(amenitySearchTerm.toLowerCase()) ||
+                          a.description?.toLowerCase().includes(amenitySearchTerm.toLowerCase());
+                        const matchCat =
+                          amenityCategoryFilter === 'all' || a.category === amenityCategoryFilter;
+                        return matchSearch && matchCat;
+                      })
+                      .map((amenity) => (
+                        <tr key={amenity.id} className="hover:bg-white/5 transition">
+                          <td className="py-3 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-[#1E241E] border border-white/10 flex items-center justify-center text-[#E3B94E] shrink-0">
+                              {renderAmenityIcon(amenity.icon, 'w-5 h-5')}
+                            </div>
+                            <div>
+                              <p className="font-bold text-[#EAEBE8] text-sm">{amenity.title}</p>
+                              <p className="text-[10px] text-[#A8AD94] max-w-sm truncate font-light">
+                                {amenity.description || 'No description provided'}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-white/5 text-[#EAEBE8] border border-white/10">
+                              {amenity.category}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            {amenity.is_highlight ? (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#E3B94E]/20 text-[#E3B94E] border border-[#E3B94E]/30 flex items-center gap-1 w-max">
+                                <Sparkles className="w-3 h-3" />
+                                <span>Homepage Featured</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-[#A8AD94]">Standard</span>
+                            )}
+                          </td>
+                          <td className="py-3 font-mono text-[#A8AD94]">
+                            #{amenity.sort_order || 0}
+                          </td>
+                          <td className="py-3">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAmenity(amenity)}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition ${
+                                amenity.is_active
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                  : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                              }`}
+                              title="Click to toggle active status"
+                            >
+                              {amenity.is_active ? (
+                                <>
+                                  <ToggleRight className="w-3.5 h-3.5" />
+                                  <span>Active</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ToggleLeft className="w-3.5 h-3.5" />
+                                  <span>Disabled</span>
+                                </>
+                              )}
+                            </button>
+                          </td>
+                          <td className="py-3 text-right space-x-2 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => setAmenityModal({ mode: 'edit', amenity })}
+                              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-[#787C68] text-[#EAEBE8] hover:text-[#232A23] text-xs font-bold transition"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAmenity(amenity.id)}
+                              className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition"
+                              title="Delete amenity"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ================= MODAL: VIEW BOOKING CARD ================= */}
         {viewBookingModal && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -4343,23 +4745,71 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">Image URL or Upload</label>
-                  <div className="flex gap-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] text-[#A8AD94] uppercase font-bold">Experience Image</label>
+                    <span className="text-[10px] text-[#E3B94E]">Upload or choose from Media Files / Gallery</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
-                      placeholder="https://images.unsplash.com/... or /uploads/rooms/..."
+                      placeholder="Image URL or select via buttons..."
                       value={experienceModal.exp.image_url || ''}
                       onChange={(e) => setExperienceModal({ ...experienceModal, exp: { ...experienceModal.exp, image_url: e.target.value } })}
-                      className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8]"
+                      className="flex-1 bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8]"
                     />
-                    <label className="px-3 py-2 bg-white/10 hover:bg-white/15 rounded-xl cursor-pointer text-xs font-semibold flex items-center gap-1.5 shrink-0">
-                      <Upload className="w-3.5 h-3.5 text-[#E3B94E]" />
-                      <span>{uploadingExpImg ? 'Uploading...' : 'Upload'}</span>
-                      <input type="file" accept="image/*" onChange={handleUploadExperienceImage} className="hidden" />
-                    </label>
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                      <label className="px-3 py-2 bg-white/10 hover:bg-white/15 rounded-xl cursor-pointer text-xs font-semibold flex items-center gap-1.5 transition border border-white/10">
+                        <Upload className="w-3.5 h-3.5 text-[#E3B94E]" />
+                        <span>{uploadingExpImg ? 'Uploading...' : 'Upload'}</span>
+                        <input type="file" accept="image/*" onChange={handleUploadExperienceImage} className="hidden" />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (mediaLibraryList.length === 0) loadMediaLibrary();
+                          setMediaPickerForExperience(true);
+                        }}
+                        className="px-3 py-2 bg-[#787C68]/20 hover:bg-[#787C68] hover:text-[#232A23] text-[#EAEBE8] rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-white/10"
+                        title="Choose image from Media Files"
+                      >
+                        <Folder className="w-3.5 h-3.5 text-[#E3B94E]" />
+                        <span>Media Files</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (galleryImagesList.length === 0) loadGalleryImages();
+                          setGalleryPickerForExperience(true);
+                        }}
+                        className="px-3 py-2 bg-[#E3B94E]/15 hover:bg-[#E3B94E] hover:text-[#232A23] text-[#E3B94E] rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-[#E3B94E]/30"
+                        title="Choose photo from Resort Gallery"
+                      >
+                        <Image className="w-3.5 h-3.5" />
+                        <span>Gallery</span>
+                      </button>
+                    </div>
                   </div>
                   {experienceModal.exp.image_url && (
-                    <img src={experienceModal.exp.image_url} alt="Preview" className="w-20 h-14 object-cover rounded-xl mt-2 border border-white/10" />
+                    <div className="mt-2.5 flex items-center gap-3 bg-[#1E241E] p-2.5 rounded-xl border border-white/10">
+                      <img
+                        src={getMediaUrl(experienceModal.exp.image_url)}
+                        onError={handleMediaError}
+                        alt="Preview"
+                        className="w-20 h-14 object-cover rounded-lg border border-white/10 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-[#A8AD94] uppercase tracking-wider font-bold">Selected Image</p>
+                        <p className="text-xs text-[#EAEBE8] truncate font-mono">{experienceModal.exp.image_url}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExperienceModal({ ...experienceModal, exp: { ...experienceModal.exp, image_url: '' } })}
+                        className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition shrink-0"
+                        title="Remove image"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -5608,6 +6058,481 @@ export default function AdminDashboard() {
                     >
                       <div className="aspect-square bg-black/40 overflow-hidden relative">
                         <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
+                          {item.size}
+                        </span>
+                      </div>
+                      <div className="p-2">
+                        <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: ADD / EDIT AMENITY ================= */}
+        {amenityModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-lg w-full p-6 sm:p-7 rounded-3xl border border-white/20 space-y-5 shadow-2xl max-h-[92vh] overflow-y-auto">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    {amenityModal.mode === 'add' ? 'Add Resort Amenity' : 'Edit Amenity'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAmenityModal(null)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveAmenity} className="space-y-4 text-xs">
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Amenity Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. High-Speed Satellite WiFi"
+                    value={amenityModal.amenity.title || ''}
+                    onChange={(e) =>
+                      setAmenityModal({
+                        ...amenityModal,
+                        amenity: { ...amenityModal.amenity, title: e.target.value },
+                      })
+                    }
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8] focus:border-[#E3B94E] outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                      Category
+                    </label>
+                    <select
+                      value={amenityModal.amenity.category || 'Resort Comforts'}
+                      onChange={(e) =>
+                        setAmenityModal({
+                          ...amenityModal,
+                          amenity: { ...amenityModal.amenity, category: e.target.value },
+                        })
+                      }
+                      className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8]"
+                    >
+                      <option value="Resort Comforts">Resort Comforts</option>
+                      <option value="In-Room Luxury">In-Room Luxury</option>
+                      <option value="Outdoor & Nature">Outdoor &amp; Nature</option>
+                      <option value="Wellness & Leisure">Wellness &amp; Leisure</option>
+                      <option value="Dining & Culinary">Dining &amp; Culinary</option>
+                      <option value="Guest Services">Guest Services</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                      Sort Order
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={amenityModal.amenity.sort_order ?? 0}
+                      onChange={(e) =>
+                        setAmenityModal({
+                          ...amenityModal,
+                          amenity: {
+                            ...amenityModal.amenity,
+                            sort_order: parseInt(e.target.value, 10) || 0,
+                          },
+                        })
+                      }
+                      className="w-full bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Short description of this luxury amenity..."
+                    value={amenityModal.amenity.description || ''}
+                    onChange={(e) =>
+                      setAmenityModal({
+                        ...amenityModal,
+                        amenity: { ...amenityModal.amenity, description: e.target.value },
+                      })
+                    }
+                    className="w-full bg-[#1E241E] border border-white/10 rounded-xl p-2.5 text-[#EAEBE8] focus:border-[#E3B94E] outline-none"
+                  />
+                </div>
+
+                {/* Icon Selector */}
+                <div>
+                  <label className="text-[10px] text-[#A8AD94] uppercase font-bold block mb-1.5">
+                    Select Icon
+                  </label>
+                  <div className="grid grid-cols-5 gap-2 bg-[#1E241E] p-3 rounded-2xl border border-white/10 max-h-40 overflow-y-auto">
+                    {[
+                      { id: 'Wifi', label: 'WiFi' },
+                      { id: 'Coffee', label: 'Coffee' },
+                      { id: 'Flame', label: 'Bonfire' },
+                      { id: 'Bath', label: 'En-Suite' },
+                      { id: 'Tv', label: 'Smart TV' },
+                      { id: 'Waves', label: 'Water' },
+                      { id: 'Sun', label: 'Balcony' },
+                      { id: 'Heart', label: 'Hospitality' },
+                      { id: 'Wind', label: 'Heating' },
+                      { id: 'Clock', label: '24/7 Desk' },
+                      { id: 'ShieldCheck', label: 'Secure' },
+                      { id: 'BedDouble', label: 'Bed' },
+                      { id: 'Utensils', label: 'Dining' },
+                      { id: 'Compass', label: 'Safari' },
+                      { id: 'Sparkles', label: 'Luxury' },
+                    ].map((ic) => (
+                      <button
+                        key={ic.id}
+                        type="button"
+                        onClick={() =>
+                          setAmenityModal({
+                            ...amenityModal,
+                            amenity: { ...amenityModal.amenity, icon: ic.id },
+                          })
+                        }
+                        className={`flex flex-col items-center justify-center p-2 rounded-xl transition border text-center ${
+                          (amenityModal.amenity.icon || 'Sparkles').toLowerCase() === ic.id.toLowerCase()
+                            ? 'bg-[#E3B94E]/20 border-[#E3B94E] text-[#E3B94E]'
+                            : 'bg-white/5 border-white/5 text-[#A8AD94] hover:bg-white/10 hover:text-[#EAEBE8]'
+                        }`}
+                      >
+                        {renderAmenityIcon(ic.id, 'w-4 h-4 mb-1')}
+                        <span className="text-[9px] truncate max-w-full">{ic.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Amenity Image (Optional) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] text-[#A8AD94] uppercase font-bold">
+                      Feature Photo / Illustration (Optional)
+                    </label>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      placeholder="Optional image URL..."
+                      value={amenityModal.amenity.image_url || ''}
+                      onChange={(e) =>
+                        setAmenityModal({
+                          ...amenityModal,
+                          amenity: { ...amenityModal.amenity, image_url: e.target.value },
+                        })
+                      }
+                      className="flex-1 bg-[#1E241E] border border-white/10 rounded-xl px-3 py-2 text-[#EAEBE8]"
+                    />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <label className="px-3 py-2 bg-white/10 hover:bg-white/15 rounded-xl cursor-pointer text-xs font-semibold flex items-center gap-1.5 transition border border-white/10">
+                        <Upload className="w-3.5 h-3.5 text-[#E3B94E]" />
+                        <span>{uploadingAmenityImg ? 'Uploading...' : 'Upload'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleUploadAmenityImage}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (mediaLibraryList.length === 0) loadMediaLibrary();
+                          setMediaPickerForAmenity(true);
+                        }}
+                        className="px-3 py-2 bg-[#787C68]/20 hover:bg-[#787C68] hover:text-[#232A23] text-[#EAEBE8] rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-white/10"
+                        title="Choose photo from Media Files"
+                      >
+                        <Folder className="w-3.5 h-3.5 text-[#E3B94E]" />
+                        <span>Media</span>
+                      </button>
+                    </div>
+                  </div>
+                  {amenityModal.amenity.image_url && (
+                    <div className="mt-2 flex items-center gap-2 bg-[#1E241E] p-2 rounded-xl border border-white/10">
+                      <img
+                        src={getMediaUrl(amenityModal.amenity.image_url)}
+                        onError={handleMediaError}
+                        alt="Preview"
+                        className="w-12 h-12 object-cover rounded-lg border border-white/10 shrink-0"
+                      />
+                      <p className="text-[10px] text-[#A8AD94] truncate font-mono flex-1">
+                        {amenityModal.amenity.image_url}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAmenityModal({
+                            ...amenityModal,
+                            amenity: { ...amenityModal.amenity, image_url: '' },
+                          })
+                        }
+                        className="text-rose-400 p-1 hover:bg-rose-500/10 rounded-lg"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Toggles */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <label className="flex items-center gap-2 cursor-pointer bg-[#1E241E] p-2.5 rounded-xl border border-white/10 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={!!amenityModal.amenity.is_highlight}
+                      onChange={(e) =>
+                        setAmenityModal({
+                          ...amenityModal,
+                          amenity: {
+                            ...amenityModal.amenity,
+                            is_highlight: e.target.checked ? 1 : 0,
+                          },
+                        })
+                      }
+                      className="w-4 h-4 rounded text-[#E3B94E] accent-[#E3B94E]"
+                    />
+                    <div>
+                      <span className="font-bold text-[#EAEBE8] block">Homepage Highlight</span>
+                      <span className="text-[10px] text-[#A8AD94]">Feature in Amenities grid on Home</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer bg-[#1E241E] p-2.5 rounded-xl border border-white/10 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={!!amenityModal.amenity.is_active}
+                      onChange={(e) =>
+                        setAmenityModal({
+                          ...amenityModal,
+                          amenity: {
+                            ...amenityModal.amenity,
+                            is_active: e.target.checked ? 1 : 0,
+                          },
+                        })
+                      }
+                      className="w-4 h-4 rounded text-[#787C68] accent-[#787C68]"
+                    />
+                    <div>
+                      <span className="font-bold text-[#EAEBE8] block">Active Status</span>
+                      <span className="text-[10px] text-[#A8AD94]">Visible to public guests</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setAmenityModal(null)}
+                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[#A8AD94] font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingAmenity}
+                    className="px-5 py-2 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] font-bold uppercase tracking-wider flex items-center gap-1.5 transition"
+                  >
+                    {savingAmenity ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>Save Amenity</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: PICK MEDIA FOR EXPERIENCE ================= */}
+        {mediaPickerForExperience && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-4xl w-full p-6 rounded-3xl border border-white/20 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Compass className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    Select Experience Photo from Media Files
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMediaPickerForExperience(false)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {mediaLibraryList.filter((item) => item.type === 'image').length === 0 ? (
+                <div className="py-12 text-center text-xs text-[#A8AD94]">
+                  No images found in Media Files. Please upload some images in the Media Files tab.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {mediaLibraryList
+                    .filter((item) => item.type === 'image')
+                    .map((item) => (
+                      <button
+                        key={item.url}
+                        type="button"
+                        onClick={() => {
+                          setExperienceModal((prev) => ({
+                            ...prev,
+                            exp: { ...prev.exp, image_url: item.url },
+                          }));
+                          setMediaPickerForExperience(false);
+                        }}
+                        className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                      >
+                        <div className="aspect-video bg-black/40 overflow-hidden relative">
+                          <img
+                            src={getMediaUrl(item.url)}
+                            onError={handleMediaError}
+                            alt={item.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition"
+                          />
+                          <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
+                            {item.size}
+                          </span>
+                        </div>
+                        <div className="p-2">
+                          <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{item.name}</p>
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: PICK GALLERY PHOTO FOR EXPERIENCE ================= */}
+        {galleryPickerForExperience && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-4xl w-full p-6 rounded-3xl border border-white/20 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Image className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    Select Experience Photo from Resort Gallery
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setGalleryPickerForExperience(false)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {galleryImagesList.length === 0 ? (
+                <div className="py-12 text-center text-xs text-[#A8AD94]">
+                  No gallery photos available. Please check the Gallery management tab.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {galleryImagesList.map((img) => (
+                    <button
+                      key={img.id || img.image_url}
+                      type="button"
+                      onClick={() => {
+                        setExperienceModal((prev) => ({
+                          ...prev,
+                          exp: { ...prev.exp, image_url: img.image_url },
+                        }));
+                        setGalleryPickerForExperience(false);
+                      }}
+                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                    >
+                      <div className="aspect-video bg-black/40 overflow-hidden relative">
+                        <img
+                          src={getMediaUrl(img.image_url)}
+                          onError={handleMediaError}
+                          alt={img.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition"
+                        />
+                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#E3B94E]">
+                          {img.category || 'Gallery'}
+                        </span>
+                      </div>
+                      <div className="p-2">
+                        <p className="text-[10px] font-semibold text-[#EAEBE8] truncate">{img.title || 'Resort Photo'}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL: PICK MEDIA FOR AMENITY ================= */}
+        {mediaPickerForAmenity && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#232A23] max-w-4xl w-full p-6 rounded-3xl border border-white/20 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn">
+              <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#E3B94E]" />
+                  <h3 className="font-display text-xl text-[#EAEBE8] font-bold">
+                    Select Amenity Illustration from Media Files
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMediaPickerForAmenity(false)}
+                  className="text-[#A8AD94] hover:text-white text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {mediaLibraryList
+                  .filter((item) => item.type === 'image')
+                  .map((item) => (
+                    <button
+                      key={item.url}
+                      type="button"
+                      onClick={() => {
+                        setAmenityModal((prev) => ({
+                          ...prev,
+                          amenity: { ...prev.amenity, image_url: item.url },
+                        }));
+                        setMediaPickerForAmenity(false);
+                      }}
+                      className="group bg-[#1E241E] border border-white/10 hover:border-[#E3B94E] rounded-2xl overflow-hidden text-left transition"
+                    >
+                      <div className="aspect-square bg-black/40 overflow-hidden relative">
+                        <img
+                          src={getMediaUrl(item.url)}
+                          onError={handleMediaError}
+                          alt={item.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition"
+                        />
                         <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[8px] bg-black/70 text-[#A8AD94]">
                           {item.size}
                         </span>

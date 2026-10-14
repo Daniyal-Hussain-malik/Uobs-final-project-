@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import { Compass, Sparkles, Check, ArrowRight } from 'lucide-react';
+import { getMediaUrl, handleMediaError } from '../utils/media';
+import { Compass, Sparkles, Check, ArrowRight, Eye } from 'lucide-react';
 import ServiceBookingModal from '../components/ServiceBookingModal';
 
 export default function Experiences() {
@@ -11,7 +13,7 @@ export default function Experiences() {
     async function loadExp() {
       try {
         const res = await api.get('/public/experiences');
-        if (res.success) setExperiences(res.experiences);
+        if (res.success) setExperiences(res.experiences || []);
       } catch (e) {
         console.error(e);
       }
@@ -39,16 +41,23 @@ export default function Experiences() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {experiences.map((item) => (
           <div key={item.id} className="bg-[#232A23] border border-white/10 rounded-2xl overflow-hidden flex flex-col hover:border-[#787C68] transition shadow-xl group">
-            <div className="relative aspect-[16/10] overflow-hidden bg-[#1E241E]">
-              <img src={item.image_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+            <Link to={`/experiences/${item.id}`} className="relative aspect-[16/10] overflow-hidden bg-[#1E241E] block">
+              <img
+                src={getMediaUrl(item.image_url)}
+                alt={item.title}
+                onError={handleMediaError}
+                className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+              />
               <div className="absolute top-3 left-3 bg-[#2C332C]/90 backdrop-blur-md text-[#E3B94E] text-[10px] font-semibold tracking-wider uppercase px-3 py-1 rounded-full border border-white/15">
                 {item.category}
               </div>
-            </div>
+            </Link>
 
             <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
               <div>
-                <h3 className="font-display text-2xl font-medium text-[#EAEBE8] mb-1.5">{item.title}</h3>
+                <Link to={`/experiences/${item.id}`}>
+                  <h3 className="font-display text-2xl font-medium text-[#EAEBE8] hover:text-[#E3B94E] transition mb-1.5">{item.title}</h3>
+                </Link>
                 <p className="text-xs text-[#A8AD94] leading-relaxed line-clamp-3 font-light">{item.description}</p>
                 {(item.duration || item.difficulty) && (
                   <div className="flex items-center gap-2 mt-2 text-[10px] text-[#A8AD94]">
@@ -63,20 +72,29 @@ export default function Experiences() {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+              <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-2">
                 <div>
                   <span className="text-[10px] text-[#A8AD94] uppercase block font-medium">Rate</span>
-                  <span className="font-display text-2xl text-[#E3B94E] font-bold">
+                  <span className="font-display text-xl text-[#E3B94E] font-bold">
                     PKR {parseInt(item.price).toLocaleString()} <span className="text-[10px] text-[#A8AD94] font-sans">/ {item.pricing_unit?.replace('_', ' ')}</span>
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setBookingService(item)}
-                  className="px-5 py-2.5 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] text-xs font-semibold uppercase tracking-wider transition flex items-center gap-1.5 shadow-md"
-                >
-                  Book Safari <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/experiences/${item.id}`}
+                    className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[#EAEBE8] text-xs font-semibold tracking-wider transition flex items-center gap-1 border border-white/10"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-[#E3B94E]" />
+                    <span>Details</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setBookingService(item)}
+                    className="px-4 py-2 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] text-xs font-semibold uppercase tracking-wider transition flex items-center gap-1.5 shadow-md"
+                  >
+                    <span>Book</span> <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

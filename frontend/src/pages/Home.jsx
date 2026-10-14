@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import RoomCard from '../components/RoomCard';
+import ServiceBookingModal from '../components/ServiceBookingModal';
+import { getMediaUrl, handleMediaError, DEFAULT_RESORT_VIDEO, DEFAULT_RESORT_IMAGE } from '../utils/media';
 import {
   Calendar, Users, ArrowRight, Star, Sparkles, MapPin, Phone,
   Mail, Compass, Flame, Coffee, Check, Send, CheckCircle, Shield,
-  Quote, ShieldCheck, Play, X
+  Quote, ShieldCheck, Play, X, Wifi, Sun, Eye, Clock, Gauge, Heart, Wind
 } from 'lucide-react';
 
 import StayDateRangePicker from '../components/StayDateRangePicker';
@@ -14,6 +16,7 @@ import GuestSelector from '../components/GuestSelector';
 export default function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [bookingService, setBookingService] = useState(null);
   const navigate = useNavigate();
   const heroVideoRef = useRef(null);
 
@@ -99,9 +102,9 @@ export default function Home() {
   };
 
   const hero = data?.hero || {
-    media_type: 'image',
+    media_type: 'video',
     image_url: '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG',
-    video_url: '',
+    video_url: '/uploads/rooms/fbac89b9f17e4ef5939dde3f37a7110d.mp4',
     badge: 'Katpana Cold Desert, Skardu • 2,228M',
     title: 'Experience Nature in Luxury',
     subtitle: 'A secluded resort where cold desert dunes embrace Karakoram peaks — refined hospitality since 2010.',
@@ -109,6 +112,9 @@ export default function Home() {
     cta_link: '/rooms',
     video_button_text: 'Watch Resort Tour',
   };
+
+  const heroVideoSrc = getMediaUrl(hero.video_url, DEFAULT_RESORT_VIDEO);
+  const heroImageSrc = getMediaUrl(hero.image_url, DEFAULT_RESORT_IMAGE);
 
   return (
     <div className="bg-[#2C332C] text-[#EAEBE8] space-y-28 pb-20 selection:bg-[#787C68] selection:text-[#232A23]">
@@ -121,26 +127,28 @@ export default function Home() {
           {(hero.media_type === 'video' || (!hero.media_type && hero.video_url)) && hero.video_url ? (
             <video
               ref={heroVideoRef}
-              key={hero.video_url}
+              key={heroVideoSrc}
               autoPlay
               loop
               muted
               playsInline
               preload="auto"
-              poster={hero.image_url || '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG'}
+              poster={heroImageSrc}
+              onError={(e) => {
+                if (e.target && e.target.src !== DEFAULT_RESORT_VIDEO) {
+                  e.target.src = DEFAULT_RESORT_VIDEO;
+                }
+              }}
               className="w-full h-full object-cover scale-105"
             >
-              {hero.video_url.toLowerCase().endsWith('.mov') && (
-                <source src={hero.video_url.replace(/\.mov$/i, '.mp4')} type="video/mp4" />
-              )}
-              <source src={hero.video_url} type="video/mp4" />
-              <source src={hero.video_url} type="video/quicktime" />
-              <source src={hero.video_url} />
+              <source src={heroVideoSrc} type="video/mp4" />
+              <source src={DEFAULT_RESORT_VIDEO} type="video/mp4" />
             </video>
           ) : (
             <img
-              src={hero.image_url || '/uploads/rooms/dji_fly_20250820_180134_0278_1755701835508_photo.JPG'}
+              src={heroImageSrc}
               alt="Oasis Resort Katpana Cold Desert Skardu"
+              onError={handleMediaError}
               className="w-full h-full object-cover scale-105 animate-[kenburns_24s_infinite_alternate]"
             />
           )}
@@ -415,31 +423,51 @@ export default function Home() {
       </section>
 
 
-      {/* 5. OFFICIAL AMENITIES BENTO GRID */}
+      {/* 5. OFFICIAL AMENITIES BENTO GRID (DYNAMIC FROM DATABASE) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="text-center max-w-2xl mx-auto space-y-3">
           <span className="font-script text-3xl text-[#E3B94E]">
-            Room Comforts
+            Room &amp; Resort Comforts
           </span>
           <h2 className="font-display text-3xl sm:text-4xl text-[#EAEBE8] font-medium">
             Amenities Designed for Rest
           </h2>
+          <p className="text-xs text-[#A8AD94]">
+            Thoughtfully engineered amenities tailored for Skardu's extreme alpine environment.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-xs">
-          {[
-            { title: 'Heated Indoor Solarium', desc: 'Year-round tempered alpine waters with panoramic snowcapped peak views.' },
-            { title: 'Balti Herbal Spa & Hammam', desc: 'Cold-pressed apricot kernel oil treatments and soothing hot stone relaxation.' },
-            { title: 'Farm-to-Table Organic Dining', desc: 'Fresh mountain vegetables and organic herbs from our private resort orchard.' },
-            { title: 'Cedar Firepit & Tea Pavilion', desc: 'Evening gatherings with traditional Balti acoustic music and spiced kahwa.' },
-            { title: 'High-Speed Starlink WiFi', desc: 'Seamless satellite connectivity across all suites, terraces, and dunes.' },
-            { title: '24/7 Chauffeur & Concierge', desc: 'Complimentary Skardu airport transfers and private sightseeing excursions.' },
-          ].map((amenity, i) => (
-            <div key={i} className="bg-[#232A23] border border-white/10 p-6 rounded-2xl space-y-2 hover:border-[#787C68] transition">
-              <h4 className="font-display text-lg text-[#EAEBE8] font-medium">{amenity.title}</h4>
-              <p className="text-[#A8AD94] leading-relaxed">{amenity.desc}</p>
-            </div>
-          ))}
+          {((data?.amenities && data.amenities.length > 0)
+            ? data.amenities
+            : [
+                { title: 'Heated Indoor Solarium', description: 'Year-round tempered alpine waters with panoramic snowcapped peak views.', icon: 'Flame', category: 'Resort Comforts' },
+                { title: 'Balti Herbal Spa & Hammam', description: 'Cold-pressed apricot kernel oil treatments and soothing hot stone relaxation.', icon: 'Sparkles', category: 'Wellness & Spa' },
+                { title: 'Farm-to-Table Organic Dining', description: 'Fresh mountain vegetables and organic herbs from our private resort orchard.', icon: 'Coffee', category: 'Dining & Cuisine' },
+                { title: 'Cedar Firepit & Tea Pavilion', description: 'Evening gatherings with traditional Balti acoustic music and spiced kahwa.', icon: 'Flame', category: 'Outdoor & Gatherings' },
+                { title: 'High-Speed Starlink WiFi', description: 'Seamless satellite connectivity across all suites, terraces, and dunes.', icon: 'Wifi', category: 'Connectivity' },
+                { title: '24/7 Chauffeur & Concierge', description: 'Complimentary Skardu airport transfers and private sightseeing excursions.', icon: 'Compass', category: 'Services' },
+              ]
+          ).map((amenity, i) => {
+            const iconMap = { Flame, Sparkles, Coffee, Wifi, Compass, Sun, Eye, Clock, Heart, Wind, Shield: ShieldCheck };
+            const IconComp = iconMap[amenity.icon] || Sparkles;
+            return (
+              <div key={amenity.id || i} className="bg-[#232A23] border border-white/10 p-6 rounded-2xl space-y-3 hover:border-[#787C68] transition shadow-lg group">
+                <div className="w-10 h-10 rounded-xl bg-[#787C68]/20 flex items-center justify-center">
+                  <IconComp className="w-5 h-5 text-[#E3B94E]" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#A8AD94] uppercase tracking-wider block font-semibold mb-1">
+                    {amenity.category || 'Resort Comforts'}
+                  </span>
+                  <h4 className="font-display text-lg text-[#EAEBE8] font-medium group-hover:text-[#E3B94E] transition">
+                    {amenity.title}
+                  </h4>
+                </div>
+                <p className="text-[#A8AD94] leading-relaxed font-light">{amenity.description}</p>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -464,6 +492,94 @@ export default function Home() {
           >
             Claim 10% Courtesy
           </Link>
+        </div>
+      </section>
+
+
+      {/* 6.5 DYNAMIC EXPERIENCES CARDS SECTION (PLACED BEFORE GUEST EXPERIENCES) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-white/10 pb-6">
+          <div className="space-y-2">
+            <span className="font-script text-2xl sm:text-3xl text-[#E3B94E]">
+              Alpine Adventures
+            </span>
+            <h2 className="font-display text-3xl sm:text-4xl text-[#EAEBE8] font-medium">
+              Curated Skardu Experiences
+            </h2>
+            <p className="text-xs text-[#A8AD94]">
+              High-altitude desert dune safaris, celestial stargazing, and alpine excursions.
+            </p>
+          </div>
+          <Link
+            to="/experiences"
+            className="text-xs uppercase tracking-wider text-[#A8AD94] hover:text-[#EAEBE8] flex items-center gap-1.5 transition font-semibold"
+          >
+            <span>Explore All Experiences</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {(data?.experiences || []).slice(0, 3).map((item) => (
+            <div key={item.id} className="bg-[#232A23] border border-white/10 rounded-2xl overflow-hidden flex flex-col hover:border-[#787C68] transition shadow-xl group">
+              <Link to={`/experiences/${item.id}`} className="relative aspect-[16/10] overflow-hidden bg-[#1E241E] block">
+                <img
+                  src={getMediaUrl(item.image_url)}
+                  alt={item.title}
+                  onError={handleMediaError}
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                />
+                <div className="absolute top-3 left-3 bg-[#2C332C]/90 backdrop-blur-md text-[#E3B94E] text-[10px] font-semibold tracking-wider uppercase px-3 py-1 rounded-full border border-white/15">
+                  {item.category || 'Adventure'}
+                </div>
+              </Link>
+
+              <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                <div>
+                  <Link to={`/experiences/${item.id}`}>
+                    <h3 className="font-display text-2xl font-medium text-[#EAEBE8] hover:text-[#E3B94E] transition mb-1.5">{item.title}</h3>
+                  </Link>
+                  <p className="text-xs text-[#A8AD94] leading-relaxed line-clamp-3 font-light">{item.description}</p>
+                  {(item.duration || item.difficulty) && (
+                    <div className="flex items-center gap-2 mt-2 text-[10px] text-[#A8AD94]">
+                      {item.duration && <span>⏱️ {item.duration}</span>}
+                      {item.difficulty && <span>• 🎯 {item.difficulty}</span>}
+                    </div>
+                  )}
+                  {item.departure_times && (
+                    <p className="text-[10px] text-[#E3B94E]/90 mt-1">
+                      🕒 Slots: {item.departure_times}
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] text-[#A8AD94] uppercase block font-medium">Rate</span>
+                    <span className="font-display text-xl text-[#E3B94E] font-bold">
+                      PKR {parseInt(item.price || 0).toLocaleString()} <span className="text-[10px] text-[#A8AD94] font-sans">/ {(item.pricing_unit || 'per_vehicle').replace('_', ' ')}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`/experiences/${item.id}`}
+                      className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-[#EAEBE8] text-xs font-semibold tracking-wider transition flex items-center gap-1 border border-white/10"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-[#E3B94E]" />
+                      <span>Details</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setBookingService(item)}
+                      className="px-4 py-2 rounded-xl bg-[#787C68] hover:bg-[#868B74] text-[#232A23] text-xs font-semibold uppercase tracking-wider transition flex items-center gap-1.5 shadow-md"
+                    >
+                      <span>Book</span> <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -664,6 +780,16 @@ export default function Home() {
 
         </div>
       </section>
+
+      {/* Standalone Direct Experience Booking Modal */}
+      {bookingService && (
+        <ServiceBookingModal
+          isOpen={!!bookingService}
+          onClose={() => setBookingService(null)}
+          service={bookingService}
+          bookingType="experience"
+        />
+      )}
 
     </div>
   );

@@ -394,6 +394,22 @@ async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    await p.query(`
+      CREATE TABLE IF NOT EXISTS amenities (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL DEFAULT 'Resort Comforts',
+        description TEXT NULL,
+        icon VARCHAR(100) NULL DEFAULT 'Sparkles',
+        image_url VARCHAR(500) NULL,
+        is_highlight TINYINT(1) DEFAULT 1,
+        sort_order INT DEFAULT 0,
+        is_active TINYINT(1) DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // Ensure default hero settings exist
     const defaultSettings = [
       ['hero_media_type', 'video'],
@@ -414,11 +430,37 @@ async function initDatabase() {
       );
     }
 
-    // Automatically migrate any legacy .MOV files to browser-compatible .mp4 and ensure hero is set to video loop
+    // Seed default amenities if empty
+    try {
+      const amenCount = await query('SELECT COUNT(*) as count FROM amenities');
+      if (amenCount[0].count === 0) {
+        await query(`
+          INSERT INTO amenities (title, category, description, icon, is_highlight, sort_order, is_active) VALUES
+          ('Heated Indoor Solarium', 'Resort Comforts', 'Year-round tempered alpine waters with panoramic snowcapped peak views.', 'Flame', 1, 1, 1),
+          ('Balti Herbal Spa & Hammam', 'Wellness & Spa', 'Cold-pressed apricot kernel oil treatments and soothing hot stone relaxation.', 'Sparkles', 1, 2, 1),
+          ('Farm-to-Table Organic Dining', 'Dining & Cuisine', 'Fresh mountain vegetables and organic herbs from our private resort orchard.', 'Coffee', 1, 3, 1),
+          ('Cedar Firepit & Tea Pavilion', 'Outdoor & Gatherings', 'Evening gatherings with traditional Balti acoustic music and spiced kahwa.', 'Flame', 1, 4, 1),
+          ('High-Speed Starlink WiFi', 'Connectivity', 'Seamless satellite connectivity across all suites, terraces, and dunes.', 'Wifi', 1, 5, 1),
+          ('24/7 Chauffeur & Concierge', 'Services', 'Complimentary Skardu airport transfers and private sightseeing excursions.', 'Compass', 1, 6, 1),
+          ('Radiant Underfloor Heating', 'Room Comforts', 'Imported radiant underfloor warmth throughout all luxury suites and villas.', 'Sun', 1, 7, 1),
+          ('Astronomical Celestial Telescope', 'Adventure', 'Professional Celestron telescopes provided for deep-space Milky Way stargazing.', 'Eye', 1, 8, 1)
+        `);
+      }
+    } catch (amenErr) {
+      // Ignore if table error
+    }
+
+    // Automatically migrate any legacy .MOV files to browser-compatible .mp4 and normalize URL paths
     try {
       await p.query("UPDATE site_settings SET setting_value = REPLACE(setting_value, '.MOV', '.mp4') WHERE setting_key = 'hero_video_url' AND setting_value LIKE '%.MOV%'");
       await p.query("UPDATE media_gallery SET image_url = REPLACE(image_url, '.MOV', '.mp4') WHERE image_url LIKE '%.MOV%'");
       await p.query("UPDATE site_settings SET setting_value = 'video' WHERE setting_key = 'hero_media_type'");
+      await p.query("UPDATE site_settings SET setting_value = CONCAT('/', setting_value) WHERE setting_value LIKE 'uploads/%'");
+      await p.query("UPDATE media_gallery SET image_url = CONCAT('/', image_url) WHERE image_url LIKE 'uploads/%'");
+      await p.query("UPDATE media_gallery SET image_url = CONCAT('/uploads/gallery/', image_url) WHERE image_url NOT LIKE '/%' AND image_url NOT LIKE 'http%'");
+      await p.query("UPDATE rooms SET featured_image = CONCAT('/', featured_image) WHERE featured_image LIKE 'uploads/%'");
+      await p.query("UPDATE experiences SET image_url = CONCAT('/', image_url) WHERE image_url LIKE 'uploads/%'");
+      await p.query("UPDATE dining_items SET image_url = CONCAT('/', image_url) WHERE image_url LIKE 'uploads/%'");
       const defaultHash = await bcrypt.hash('password123', 10);
       await p.query(
         "UPDATE users SET password = ? WHERE email IN ('admin@oasisresort.pk', 'admin@oasisresort.com', 'reception@oasisresort.pk', 'reception@oasisresort.com', 'guest@oasisresort.pk')",

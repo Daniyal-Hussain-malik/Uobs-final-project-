@@ -15,6 +15,7 @@ import BookingFunnel from './pages/BookingFunnel';
 import BookingConfirmation from './pages/BookingConfirmation';
 import Dining from './pages/Dining';
 import Experiences from './pages/Experiences';
+import ExperienceDetail from './pages/ExperienceDetail';
 import Gallery from './pages/Gallery';
 import Offers from './pages/Offers';
 import BlogIndex from './pages/BlogIndex';
@@ -79,6 +80,7 @@ export default function App() {
               <Route path="/booking/:bookingNumber/confirmation" element={<BookingConfirmation />} />
               <Route path="/dining" element={<Dining />} />
               <Route path="/experiences" element={<Experiences />} />
+              <Route path="/experiences/:id" element={<ExperienceDetail />} />
               <Route path="/amenities" element={<Navigate to="/experiences" replace />} />
               <Route path="/gallery" element={<Gallery />} />
               <Route path="/offers" element={<Offers />} />

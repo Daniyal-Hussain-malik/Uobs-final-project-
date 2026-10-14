@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Play, X, Maximize2 } from 'lucide-react';
-
-const isVideoMedia = (url) => {
-  if (!url) return false;
-  return /\.(mp4|mov|webm|m4v|ogv|mkv|avi|3gp)($|\?)/i.test(String(url));
-};
+import { getMediaUrl, handleMediaError, isVideoMedia, DEFAULT_RESORT_VIDEO } from '../utils/media';
 
 export default function Gallery() {
   const [items, setItems] = useState([]);
@@ -78,6 +74,7 @@ export default function Gallery() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {items.map((item) => {
             const isVideo = isVideoMedia(item.image_url);
+            const mediaSrc = getMediaUrl(item.image_url);
             return (
               <div
                 key={item.id}
@@ -87,11 +84,16 @@ export default function Gallery() {
                 {isVideo ? (
                   <div className="relative w-full h-full bg-[#151915] flex items-center justify-center">
                     <video
-                      src={item.image_url}
+                      src={mediaSrc}
                       className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
                       muted
                       preload="metadata"
                       playsInline
+                      onError={(e) => {
+                        if (e.target && e.target.src !== DEFAULT_RESORT_VIDEO) {
+                          e.target.src = DEFAULT_RESORT_VIDEO;
+                        }
+                      }}
                     />
                     <div className="absolute top-3 left-3 z-10">
                       <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/90 text-white border border-rose-400/40 shadow">
@@ -106,8 +108,9 @@ export default function Gallery() {
                   </div>
                 ) : (
                   <img
-                    src={item.image_url}
+                    src={mediaSrc}
                     alt={item.title}
+                    onError={handleMediaError}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />
@@ -125,12 +128,6 @@ export default function Gallery() {
             );
           })}
         </div>
-
-        {items.length === 0 && (
-          <div className="py-20 text-center text-[#A8AD94] text-xs">
-            No media found for the selected category.
-          </div>
-        )}
 
       </div>
 
@@ -154,7 +151,7 @@ export default function Gallery() {
             <div className="w-full rounded-2xl overflow-hidden border border-white/20 bg-black shadow-2xl flex items-center justify-center max-h-[80vh]">
               {isVideoMedia(activeMediaItem.image_url) ? (
                 <video
-                  src={activeMediaItem.image_url}
+                  src={getMediaUrl(activeMediaItem.image_url)}
                   controls
                   autoPlay
                   playsInline
@@ -162,8 +159,9 @@ export default function Gallery() {
                 />
               ) : (
                 <img
-                  src={activeMediaItem.image_url}
+                  src={getMediaUrl(activeMediaItem.image_url)}
                   alt={activeMediaItem.title}
+                  onError={handleMediaError}
                   className="w-full max-h-[78vh] object-contain"
                 />
               )}

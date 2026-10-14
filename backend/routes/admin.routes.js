@@ -1616,5 +1616,91 @@ router.delete('/media-library/file', async (req, res) => {
   }
 });
 
+// ==========================================
+// 16. AMENITIES CRUD MANAGEMENT
+// ==========================================
+router.get('/amenities', async (req, res) => {
+  try {
+    const amenities = await query('SELECT * FROM amenities ORDER BY sort_order ASC, id ASC');
+    res.json({ success: true, amenities });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to load amenities: ' + err.message });
+  }
+});
+
+router.post('/amenities', async (req, res) => {
+  try {
+    let { title, category = 'Resort Comforts', description = '', icon = 'Sparkles', image_url = '', is_highlight = 1, sort_order = 0, is_active = 1 } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(422).json({ success: false, message: 'Amenity title is required.' });
+    }
+    if (image_url && image_url.startsWith('uploads/')) {
+      image_url = '/' + image_url;
+    }
+    const result = await query(
+      'INSERT INTO amenities (title, category, description, icon, image_url, is_highlight, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [title.trim(), (category || 'Resort Comforts').trim(), (description || '').trim(), (icon || 'Sparkles').trim(), (image_url || '').trim(), (is_highlight === 1 || is_highlight === '1' || is_highlight === true) ? 1 : 0, parseInt(sort_order, 10) || 0, (is_active === 0 || is_active === '0' || is_active === false) ? 0 : 1]
+    );
+    res.status(201).json({
+      success: true,
+      message: 'Amenity added successfully.',
+      id: result.insertId,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to create amenity: ' + err.message });
+  }
+});
+
+router.put('/amenities/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let { title, category, description, icon, image_url, is_highlight, sort_order, is_active } = req.body;
+    const existing = await query('SELECT * FROM amenities WHERE id = ?', [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Amenity not found.' });
+    }
+    const cur = existing[0];
+    if (image_url && image_url.startsWith('uploads/')) {
+      image_url = '/' + image_url;
+    }
+    await query(
+      `UPDATE amenities SET
+        title = COALESCE(?, title),
+        category = COALESCE(?, category),
+        description = COALESCE(?, description),
+        icon = COALESCE(?, icon),
+        image_url = COALESCE(?, image_url),
+        is_highlight = COALESCE(?, is_highlight),
+        sort_order = COALESCE(?, sort_order),
+        is_active = COALESCE(?, is_active)
+      WHERE id = ?`,
+      [
+        title !== undefined && title !== '' ? title.trim() : null,
+        category !== undefined && category !== '' ? category.trim() : null,
+        description !== undefined ? description.trim() : null,
+        icon !== undefined && icon !== '' ? icon.trim() : null,
+        image_url !== undefined ? image_url.trim() : null,
+        is_highlight !== undefined ? ((is_highlight === 1 || is_highlight === '1' || is_highlight === true) ? 1 : 0) : null,
+        sort_order !== undefined ? parseInt(sort_order, 10) || 0 : null,
+        is_active !== undefined ? ((is_active === 0 || is_active === '0' || is_active === false) ? 0 : 1) : null,
+        id,
+      ]
+    );
+    res.json({ success: true, message: 'Amenity updated successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update amenity: ' + err.message });
+  }
+});
+
+router.delete('/amenities/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM amenities WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Amenity deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to delete amenity: ' + err.message });
+  }
+});
+
 module.exports = router;
 
